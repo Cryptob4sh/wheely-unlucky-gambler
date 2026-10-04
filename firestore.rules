@@ -19,6 +19,12 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Bookie slip screenshots: everyone can look, only the admin can add or remove.
+    match /wug_slipimgs/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Follower predictions: anyone signed in (anonymously is fine) can cast or change
     // their own vote, one per slip. Only the admin can delete votes.
     match /wug_votes/{voteId} {

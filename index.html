@@ -199,6 +199,27 @@ button{font:inherit;cursor:pointer;color:inherit}
 .nickrow .btn{background:var(--paper-ink);color:#fff;border-color:var(--paper-ink)}
 .csv-btn{margin-left:auto}
 .csv-btn + .reset-btn{margin-left:0}
+.chip-sep{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
+.fx.off{opacity:.38}
+.budget-kv b{color:var(--win)}
+.budget-row{display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:600}
+.budget-row input{width:110px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;font-size:16px}
+.bookie{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bookie-thumb{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:rgba(4,7,16,.6);border-radius:10px;padding:4px 10px 4px 4px;color:var(--ink);font-weight:600;font-size:13px}
+.bookie-thumb img{width:54px;height:72px;object-fit:cover;border-radius:6px;display:block}
+.bookie-thumb:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.bookie-add{font-size:13px;padding:7px 12px;cursor:pointer}
+.lightbox{position:fixed;inset:0;z-index:70;background:rgba(2,4,10,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px}
+.lightbox figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px;max-height:85vh;max-width:100%}
+.lightbox img{max-width:min(100%,560px);max-height:78vh;object-fit:contain;border-radius:8px;background:#fff}
+.lightbox figcaption{color:var(--muted);font-size:13px}
+.help{width:min(100%,620px);max-height:88vh}
+.help-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.help details{border:1px solid var(--line);border-radius:10px;padding:8px 12px;background:rgba(4,7,16,.5)}
+.help summary{cursor:pointer;font-weight:700;font-size:15px;padding:4px 0}
+.help summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.help ol,.help ul{margin:8px 0 4px;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.5}
+.help b{color:var(--gold);font-weight:700}
 .results{width:100%;display:flex;flex-direction:column;gap:10px;margin-top:6px}
 .res-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 .res-head h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:18px;text-shadow:0 1px 3px rgba(0,0,0,.95)}
@@ -326,7 +347,7 @@ window.WUG = (function(){
       fs = firebase.firestore(); auth = firebase.auth();
     }
   }catch(e){ console.warn("Firebase didn't start:", e); }
-  const map = p => p.replace(/^slips(?=\/|$)/, "wug_slips").replace(/^votes(?=\/|$)/, "wug_votes").replace(/^config\//, "wug_config/");
+  const map = p => p.replace(/^slips(?=\/|$)/, "wug_slips").replace(/^votes(?=\/|$)/, "wug_votes").replace(/^slipimgs(?=\/|$)/, "wug_slipimgs").replace(/^config\//, "wug_config/");
   const db = fs ? { collection: p => fs.collection(map(p)), doc: p => fs.doc(map(p)) } : null;
   return { db, auth, adminEmail: ADMIN_EMAIL };
 })();
@@ -346,6 +367,7 @@ window.WUG = (function(){
     </div>
     <div class="hdr-actions">
       <span class="admin-badge" id="adminBadge" hidden>Admin</span>
+      <button class="btn admin-only" id="helpBtn" type="button">How it works</button>
       <button class="btn" id="roleBtn">Admin login</button>
       <button class="btn" id="soundBtn" aria-pressed="true">Sound on</button>
       <button class="btn admin-only" id="newBtn">New slip</button>
@@ -417,6 +439,85 @@ window.WUG = (function(){
       <button type="submit" class="btn primary">Unlock</button>
     </div>
   </form>
+</div>
+<div class="sheet-bg" id="helpBg" hidden>
+  <div class="sheet help" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="help-head"><h3 id="helpTitle">How it works</h3><button class="btn" id="helpClose" type="button">Close</button></div>
+    <p class="note">Only you see this, because you're logged in as admin. Viewers can look at everything but can't change anything.</p>
+
+    <details open><summary>1. Spinning a slip</summary>
+      <ol>
+        <li>Pick the fixtures week with the buttons in <b>Fixtures</b> (e.g. 9–12 Oct). Only teams playing that week go on the teams ball.</li>
+        <li>Tap <b>Spin</b> to spin the ball shown. It moves on to the next ball by itself: bet type, number of teams, the teams (one spin per team), then the stake.</li>
+        <li><b>Spin the lot</b> spins every ball in one go.</li>
+        <li>To re-spin one ball, tap its row under the ball (Type of bet, Number of teams, The teams, Stake), then tap <b>Spin</b>.</li>
+        <li><b>New slip</b> clears the slip and starts again. Anyone watching sees every spin live on their own screen.</li>
+      </ol>
+    </details>
+
+    <details><summary>2. Filters: leagues, kick-off times and days</summary>
+      <ul>
+        <li>Tap the <b>The teams</b> row. Chips appear above the ball.</li>
+        <li><b>PL / CH / L1 / L2</b> switch whole leagues on or off.</li>
+        <li><b>Early</b> = before 3pm, <b>3pm</b> = 3pm kick-offs, <b>Late</b> = after 3pm (5:30s, evening and Sunday 4:30s).</li>
+        <li><b>Fri / Sat / Sun / Mon</b> switch days on or off. For a Saturday 3pm acca, leave only <b>Sat</b> and <b>3pm</b> on.</li>
+        <li>Games that don't match are faded in the Fixtures list. At least one chip in each group must stay on.</li>
+        <li>Once a team is picked, its opponent comes off the ball, so you never get both sides of the same game.</li>
+      </ul>
+    </details>
+
+    <details><summary>3. The £5 weekly budget</summary>
+      <ul>
+        <li>The stake ball only offers what's left of this week's budget (Monday to Sunday). Spin £2 and the next slip's stake ball only has up to £3.</li>
+        <li>The betting slip shows "This week: £X of £5 left". Winnings don't top it up.</li>
+        <li>To change the £5 or the stake options, tap the ✏️ on the <b>Stake</b> row, edit, and tap <b>Save</b>. Leave the budget blank for no limit.</li>
+      </ul>
+    </details>
+
+    <details><summary>4. Odds, saving and results</summary>
+      <ul>
+        <li>When the slip is complete, type the bookie's odds in <b>Odds</b> on the betting slip (e.g. 22/1, 9/2, evens or 23.0). It shows <b>To return £X</b>.</li>
+        <li>Tap <b>Save to results</b>. Saved slips appear under <b>Results</b>, grouped by week.</li>
+        <li>Teams tick themselves ✓ or ✗ once final scores come in, with the score shown. Auto ticks have a dashed border. Tap a tick to override it: won, lost, then back to automatic.</li>
+        <li>Winning slips count the odds' return in profit/loss automatically. If the bookie paid a different amount (cash-out, boost), type it in <b>Paid out £</b>.</li>
+        <li>The red <b>×</b> on a saved slip deletes it after you confirm. <b>Reset all</b> wipes every slip, vote and the season totals (it asks first). <b>Download CSV</b> saves all results as a spreadsheet.</li>
+      </ul>
+    </details>
+
+    <details><summary>5. Bookie's slip</summary>
+      <ul>
+        <li>On a saved slip, tap <b>Add bookie slip</b> and choose a screenshot of the bet from your bookie app.</li>
+        <li>It shows as a thumbnail next to the slip. Anyone can tap it to see it full size. <b>Remove</b> takes it off.</li>
+      </ul>
+    </details>
+
+    <details><summary>6. Followers: live spins, predictions, sharing</summary>
+      <ul>
+        <li>Viewers watch your spins live and see the slip build up as you go.</li>
+        <li>When a slip is complete they can pick a nickname and vote <b>Lands</b> or <b>Busts</b> until the first kick-off. Saved slips show the votes and who called it, and the <b>Followers' leaderboard</b> ranks the best predictors.</li>
+        <li><b>Share image</b> on the betting slip (or ⇪ on a saved slip) makes a branded picture with your logo for WhatsApp, TikTok or Instagram. <b>Copy slip</b> copies it as text.</li>
+      </ul>
+    </details>
+
+    <details><summary>7. Fixtures and scores updating</summary>
+      <ul>
+        <li>Fixtures and final scores live in your GitHub (Cryptob4sh/wheely-unlucky-gambler, file <b>fixtures.json</b>) and the site reads them from there. Claude updates them on a schedule, so there's nothing to do.</li>
+        <li>If a week's fixtures look wrong or missing, ask Claude to "update the Wheely Unlucky fixtures".</li>
+        <li>Netlify's free plan has a monthly allowance and every republish uses some of it, so only republish when the app itself changes. Fixture and score updates don't need a republish.</li>
+      </ul>
+    </details>
+
+    <details><summary>8. Logging in and the phone app</summary>
+      <ul>
+        <li><b>Admin login</b> uses your Firebase password. Your phone stays logged in until you tap <b>Log out</b>. Logged out, you see exactly what followers see.</li>
+        <li>To add it to your home screen: iPhone, open it in Safari, then Share → <b>Add to Home Screen</b>. Android, Chrome menu → <b>Install app</b>.</li>
+      </ul>
+    </details>
+  </div>
+</div>
+<div class="lightbox" id="lightbox" hidden role="dialog" aria-modal="true" aria-label="Bookie's slip">
+  <figure><img id="lbImg" alt="The bookie's betting slip"><figcaption id="lbNote"></figcaption></figure>
+  <button class="btn" id="lbClose" type="button">Close</button>
 </div>
 <div class="toast" id="toast" hidden></div>
 
@@ -563,6 +664,9 @@ const store = {
 };
 let lists = Object.assign(JSON.parse(JSON.stringify(DEF)), store.get("lists2") || {});
 let leagues = Object.assign({PL:true,CH:true,L1:true,L2:true}, store.get("leagues") || {});
+let kos = Object.assign({early:true, three:true, late:true}, store.get("kos") || {});
+let offDays = Array.isArray(store.get("offDays")) ? store.get("offDays") : [];
+let budget = store.get("budget"); if(budget === null || budget === undefined) budget = 5;
 let slip = store.get("slip") || {bet:null,count:null,teams:[],stake:null,ref:makeRef()};
 if(!Array.isArray(slip.teams)) slip.teams = [];
 let current = nextStep() === "done" ? "bet" : nextStep();
@@ -582,11 +686,36 @@ function nextStep(){
   return "done";
 }
 
+function koBand(ko){
+  const t = String(ko || "").match(/(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)/i); if(!t) return "three";
+  const mins = ((+t[1]) % 12 + (t[3].toLowerCase() === "pm" ? 12 : 0)) * 60 + (+(t[2] || 0));
+  return mins < 15 * 60 ? "early" : mins === 15 * 60 ? "three" : "late";
+}
+function dayName(day){ return String(day || "").slice(0, 3); }
+function gameAllowed(g){ return !g.p && kos[koBand(g.ko)] !== false && !offDays.includes(dayName(g.day)); }
+function roundDays(){ const r = ROUNDS.find(r => r.id === round); const seen = []; (r ? r.games : []).forEach(g => { const d = dayName(g.day); if(d && !seen.includes(d)) seen.push(d); }); return seen; }
+/* ---------- weekly stake budget ---------- */
+function mondayOf(d){ const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.getFullYear() + "-" + String(x.getMonth()+1).padStart(2,"0") + "-" + String(x.getDate()).padStart(2,"0"); }
+function weekOfIso(iso){ const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? mondayOf(new Date(+m[1], +m[2]-1, +m[3])) : mondayOf(new Date()); }
+function currentWeek(){ return round && round !== "all" ? weekOfIso(round) : mondayOf(new Date()); }
+function weekLabelOf(w){ const m = w.match(/^(\d{4})-(\d{2})-(\d{2})/); const d = new Date(+m[1], +m[2]-1, +m[3]); return "w/c " + d.toLocaleDateString("en-GB", {day:"numeric", month:"short"}); }
+function spentThisWeek(excludeCurrent){
+  const w = currentWeek();
+  let spent = (typeof results !== "undefined" && results) ? results.spentInWeek(w) : 0;
+  if(!excludeCurrent && slip.stake && !slip.savedId) spent += stakeVal(slip.stake);
+  return Math.round(spent * 100) / 100;
+}
+function budgetLeft(excludeCurrent){ return budget ? Math.max(0, Math.round((budget - spentThisWeek(excludeCurrent)) * 100) / 100) : null; }
 function segments(key){
+  if(key === "stake" && budget){
+    const left = budgetLeft(true);
+    const arr = lists.stake.filter(l => stakeVal(l) > 0 && stakeVal(l) <= left + 1e-9);
+    return arr.map((label,i) => { let c = PAL[i % PAL.length]; if(i === arr.length - 1 && i > 0 && c === PAL[0]) c = PAL[(i+1) % PAL.length]; return {label, color:c}; });
+  }
   if(key === "teams"){
     const picked = new Set(slip.teams.map(t => t.name));
     slip.teams.forEach(t => { if(t.vs) picked.add(t.vs); });
-    const playing = round === "all" ? null : new Set(ROUNDS.find(r=>r.id===round).games.filter(g=>!g.p).flatMap(g=>[g.h,g.a]));
+    const playing = round === "all" ? null : new Set(ROUNDS.find(r=>r.id===round).games.filter(gameAllowed).flatMap(g=>[g.h,g.a]));
     return TEAMS.filter(t => leagues[t.lg] && !picked.has(t.name) && (!playing || playing.has(t.name)))
       .map(t => ({label:t.name, lg:t.lg, color:css(LEAGUES[t.lg].c[t.i % 2])}));
   }
@@ -704,7 +833,7 @@ function spin(fast){
     const segs = segments(current);
     const n = segs.length;
     if(spinning){ resolve(null); return; }
-    if(!n){ toast(current === "teams" ? "No teams left to pick from these fixtures. Try fewer teams or switch fixtures" : "Add some options to this wheel first"); resolve(null); return; }
+    if(!n){ toast(current === "teams" ? "No teams left with these filters. Turn a filter back on or try fewer teams" : current === "stake" && budget ? "This week's " + gbpFmt(budget) + " is all staked. A new week starts Monday" : "Add some options to this wheel first"); resolve(null); return; }
     if(current === "teams" && !slip.count){ toast("Spin the number of teams first"); resolve(null); return; }
     if(current === "teams" && slip.teams.length >= +slip.count){ toast("All " + slip.count + " teams picked. Spin the count again to change it"); resolve(null); return; }
     spinning = true; setBusy(true);
@@ -793,6 +922,7 @@ function select(key, quiet){
   $("stageTitle").textContent = w.name;
   $("stageHint").textContent = w.hint;
   $("leagueChips").hidden = key !== "teams";
+  if(key === "stake" && budget) $("stageHint").textContent = "How much goes on it. " + gbpFmt(budgetLeft(true)) + " of this week's " + gbpFmt(budget) + " left";
   if(!quiet) setReadout("Spin it", "Ready");
   else if(!spinning) setReadout("Spin it", w.name);
   renderRows(); updateSpinBtn(); draw();
@@ -855,6 +985,37 @@ function renderChips(){
     };
     el.appendChild(b);
   });
+  if(round === "all") return;
+  const sep = () => { const s2 = document.createElement("span"); s2.className = "chip-sep"; el.appendChild(s2); };
+  sep();
+  [["early","Early","Before 3pm"],["three","3pm","3pm kick-offs"],["late","Late","After 3pm"]].forEach(([k, lbl, tip]) => {
+    const b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", kos[k] !== false); b.title = tip; b.textContent = lbl;
+    b.onclick = () => {
+      if(spinning) return;
+      if(kos[k] !== false && Object.values(kos).filter(v => v !== false).length === 1){ toast("Keep at least one kick-off time on"); return; }
+      kos[k] = kos[k] === false; store.set("kos", kos); pushConfig(); afterFilter();
+    };
+    el.appendChild(b);
+  });
+  const days = roundDays();
+  if(days.length > 1){
+    sep();
+    days.forEach(d => {
+      const b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", !offDays.includes(d)); b.textContent = d;
+      b.onclick = () => {
+        if(spinning) return;
+        const on = days.filter(x => !offDays.includes(x));
+        if(!offDays.includes(d) && on.length === 1){ toast("Keep at least one day on"); return; }
+        offDays = offDays.includes(d) ? offDays.filter(x => x !== d) : offDays.concat(d);
+        store.set("offDays", offDays); pushConfig(); afterFilter();
+      };
+      el.appendChild(b);
+    });
+  }
+}
+function afterFilter(){
+  renderChips(); renderRows(); renderFixtures(); if(current === "teams" && !spinning){ rot = 0; draw(); }
+  toast(segments("teams").length + " teams on the wheel");
 }
 
 function renderSlip(){
@@ -890,6 +1051,7 @@ function renderSlip(){
     <hr class="rule">
     <div class="kv" style="font-size:16px"><span>Stake</span><b>${esc(slip.stake || "—")}</b></div>
     ${oddsRow()}
+    ${budget ? `<div class="kv budget-kv"><span>This week (${weekLabelOf(currentWeek())})</span><b>${gbpFmt(budgetLeft(false))} of ${gbpFmt(budget)} left</b></div>` : ""}
     ${verdict}
     <div class="slip-actions">
       <button class="btn save-btn admin-only" id="saveBtn" ${nextStep()==="done" && !slip.savedId ? "" : "disabled"}>${slip.savedId ? "Saved to results ✓" : "Save to results"}</button>
@@ -966,11 +1128,12 @@ function renderFixtures(){
       const key = lg + g.day;
       if(key !== lastKey){ html += `<div class="fx-day"><i style="background:var(${LEAGUES[lg].c[0]})"></i>${LEAGUES[lg].name} · ${esc(g.day)}</div>`; lastKey = key; }
       const nm = n => onSlip.has(n) ? `<b class="on">${esc(n)}</b>` : esc(n);
-      html += `<div class="fx ${g.p?"p":""}"><span class="h">${nm(g.h)}</span><span class="ko">${g.p ? "P-P" : esc(g.ko)}</span><span class="a">${nm(g.a)}</span></div>`;
+      html += `<div class="fx ${g.p?"p":""} ${!g.p && !gameAllowed(g) ? "off" : ""}"><span class="h">${nm(g.h)}</span><span class="ko">${g.p ? "P-P" : esc(g.ko)}</span><span class="a">${nm(g.a)}</span></div>`;
     });
   });
   const live = r.games.filter(g=>!g.p).length, off = r.games.length - live;
-  html += `<p class="note" style="margin:8px 0 0">${live} matches on${off ? `, ${off} postponed (P-P)` : ""}. Only teams playing go on the wheel, and a team's opponent drops off once it's picked.</p>`;
+  const allowed = r.games.filter(gameAllowed).length;
+  html += `<p class="note" style="margin:8px 0 0">${live} matches on${off ? `, ${off} postponed (P-P)` : ""}${allowed < live ? `; ${allowed} match your kick-off and day filters (others are faded)` : ""}. Only teams playing go on the wheel, and a team's opponent drops off once it's picked.</p>`;
   $("fxList").innerHTML = html;
 }
 $("roundSeg").addEventListener("click", e => {
@@ -982,7 +1145,7 @@ $("roundSeg").addEventListener("click", e => {
 });
 
 /* ---------- results (saved slips) ---------- */
-const results = (() => {
+var results = (() => {
   let items = [];           // {id, ...slipData}
   let db = null, col = null, mode = "loading";
   const LKEY = "results";
@@ -1055,6 +1218,9 @@ const results = (() => {
             <span class="ret">${st === "pending" ? "To return" : "Returned"} <b>${st === "pending" ? (pr ? gbp(pr) : "—") : (pe !== null ? gbp(pe) : "—")}</b></span>
           </div>
           <label class="ret admin-only">Paid out £<input type="number" inputmode="decimal" min="0" step="0.01" id="ret_${esc(x.id)}" data-ret="${esc(x.id)}" value="${paid(x) !== null ? paid(x) : ""}" placeholder="${st === "lost" ? "0" : (st === "won" && pr ? String(pr) + " (auto)" : "enter")}"></label>
+          <div class="bookie">${x.bookieThumb
+            ? `<button class="bookie-thumb" data-bookie="${esc(x.id)}" aria-label="View the bookie's slip"><img src="${x.bookieThumb}" alt="Bookie's betting slip"><span>Bookie's slip</span></button>${isAdmin ? `<button class="link-btn admin-only" data-bookie-del="${esc(x.id)}">Remove</button>` : ""}`
+            : (isAdmin ? `<label class="btn bookie-add admin-only">Add bookie slip<input type="file" accept="image/*" data-bookie-up="${esc(x.id)}" hidden></label>` : "")}</div>
           ${vc.total ? `<div class="rs-votes">Followers: <b>${vc.land}</b> said lands · <b>${vc.bust}</b> said busts${st !== "pending" ? ` · <i>${st === "won" ? vc.land : vc.bust} called it</i>` : ""}</div>` : ""}
           <div class="rs-foot"><span>${esc(x.ref||"")}</span>${confirmDel === x.id
             ? `<span class="del-confirm">Delete this slip? <button class="link-btn danger" data-del-yes="${esc(x.id)}">Delete</button> <button class="link-btn" data-del-no>Keep</button></span>`
@@ -1098,6 +1264,10 @@ const results = (() => {
     if(slip.savedId === id){ slip.savedId = null; saveSlip(); renderSlip(); }
   }
   $("resList").addEventListener("click", e => {
+    const bk = e.target.closest("[data-bookie]");
+    if(bk){ openBookie(bk.dataset.bookie); return; }
+    const bd = e.target.closest("[data-bookie-del]");
+    if(bd && isAdmin){ setBookie(bd.dataset.bookieDel, null, null).then(() => toast("Bookie slip removed")).catch(() => toast("Couldn't remove it")); return; }
     const sh = e.target.closest("[data-share]");
     if(sh){ const x = items.find(a => a.id === sh.dataset.share); if(x) shareSlipImage(x); return; }
     const lb = e.target.closest("[data-res]");
@@ -1127,6 +1297,8 @@ const results = (() => {
   $("resList").addEventListener("change", e => {
     if(!isAdmin) return;
     const i = e.target.closest("[data-ret]"); if(i) setReturns(i.dataset.ret, i.value.trim());
+    const up = e.target.closest("[data-bookie-up]");
+    if(up && up.files && up.files[0]){ uploadBookie(up.dataset.bookieUp, up.files[0]); return; }
     const o = e.target.closest("[data-odds]");
     if(o){ const v = o.value.trim(); if(v && !oddsDec(v)){ toast("Use odds like 22/1, 9/2, evens or 23.0"); return; } setOdds(o.dataset.odds, v); }
   });
@@ -1196,7 +1368,22 @@ const results = (() => {
     confirmDel = null; render();
     return failed;
   }
-  return {start, add, updateTeams, render, resetAll, setOdds, csv, count: () => items.length};
+  function spentInWeek(w){ return items.reduce((sum, x) => sum + (((x.week || weekOfIso(x.roundId && x.roundId !== "all" ? x.roundId : x.savedAt)) === w) ? money(x.stake) : 0), 0); }
+  async function setBookie(id, thumb, full){
+    const imgCol = window.WUG && window.WUG.db ? window.WUG.db.collection("slipimgs") : null;
+    if(mode === "db" && col && imgCol){
+      if(full) await imgCol.doc(id).set({img: full, at: new Date().toISOString()});
+      else await imgCol.doc(id).delete().catch(() => {});
+      await col.doc(id).update({bookieThumb: thumb || null});
+    } else { const arr = local(); const x = arr.find(a => a.id === id); if(x){ x.bookieThumb = thumb || null; x.bookieFull = full || null; setLocal(arr); items = arr; render(); } }
+  }
+  async function bookieFull(id){
+    const x = items.find(a => a.id === id); if(x && x.bookieFull) return x.bookieFull;
+    const imgCol = window.WUG && window.WUG.db ? window.WUG.db.collection("slipimgs") : null;
+    if(!imgCol) return x ? x.bookieThumb : null;
+    const snap = await imgCol.doc(id).get(); return snap.exists ? snap.data().img : (x ? x.bookieThumb : null);
+  }
+  return {start, add, updateTeams, render, resetAll, setOdds, csv, count: () => items.length, spentInWeek, setBookie, bookieFull};
 })();
 
 $("csvBtn").onclick = () => {
@@ -1226,7 +1413,7 @@ async function saveToResults(){
   if(nextStep() !== "done" || slip.savedId) return;
   const r = ROUNDS.find(r => r.id === round);
   const data = {
-    ref: slip.ref, bet: slip.bet, count: +slip.count, stake: slip.stake, odds: slip.odds || "",
+    ref: slip.ref, bet: slip.bet, count: +slip.count, stake: slip.stake, odds: slip.odds || "", week: currentWeek(),
     teams: JSON.parse(JSON.stringify(slip.teams)),
     roundId: round, roundLabel: r ? r.label : "", savedAt: new Date().toISOString()
   };
@@ -1258,7 +1445,8 @@ function openEditor(key){
     body.style.display = "flex"; body.style.flexDirection = "column"; body.style.gap = "8px";
   } else {
     body.removeAttribute("style");
-    body.innerHTML = `<label class="note" for="sheetText">One option per line${key==="count"?" (numbers only)":""}</label><textarea id="sheetText">${esc(lists[key].join("\n"))}</textarea>`;
+    body.innerHTML = `<label class="note" for="sheetText">One option per line${key==="count"?" (numbers only)":""}</label><textarea id="sheetText">${esc(lists[key].join("\n"))}</textarea>` +
+      (key === "stake" ? `<label class="budget-row" for="budgetIn">Weekly budget £ <input id="budgetIn" type="number" inputmode="decimal" min="0" step="0.5" value="${budget || ""}" placeholder="no limit"></label><p class="note" style="margin:4px 0 0">The stake ball only offers what's left of this budget each week (Monday to Sunday). Leave blank for no limit.</p>` : "");
   }
   $("sheetBg").hidden = false;
   const f = body.querySelector("textarea,input"); if(f) f.focus();
@@ -1269,7 +1457,7 @@ $("sheetBg").addEventListener("click", e => { if(e.target.id === "sheetBg") clos
 document.addEventListener("keydown", e => { if(e.key === "Escape" && editing) closeEditor(); });
 $("sheetReset").onclick = () => {
   if(editing === "teams"){ Object.keys(LEAGUES).forEach(k => $("lg_"+k).checked = true); }
-  else $("sheetText").value = DEF[editing].join("\n");
+  else { $("sheetText").value = DEF[editing].join("\n"); if(editing === "stake" && $("budgetIn")) $("budgetIn").value = 5; }
 };
 $("sheetSave").onclick = () => {
   if(editing === "teams"){
@@ -1280,7 +1468,9 @@ $("sheetSave").onclick = () => {
     let items = $("sheetText").value.split("\n").map(s=>s.trim()).filter(Boolean);
     if(editing === "count") items = items.filter(s => /^\d+$/.test(s) && +s >= 1 && +s <= 30);
     if(items.length < 2){ toast("Add at least two options"); return; }
-    lists[editing] = items; store.set("lists2", lists); pushConfig();
+    lists[editing] = items; store.set("lists2", lists);
+    if(editing === "stake" && $("budgetIn")){ const bv = parseFloat($("budgetIn").value); budget = isFinite(bv) && bv > 0 ? Math.round(bv * 100) / 100 : 0; store.set("budget", budget); }
+    pushConfig(); renderSlip();
   }
   const k = editing; closeEditor(); renderRows(); if(k === current){ rot = 0; draw(); }
   toast("Wheel updated");
@@ -1363,6 +1553,45 @@ async function castVote(pick){
   try{ await votes.cast(slip.ref, pick, nick); toast(pick === "land" ? "You reckon it lands" : "You reckon it busts"); }
   catch(e){ toast("Couldn't save your vote. Check your signal and try again"); }
 }
+
+/* ---------- bookie slip screenshots ---------- */
+function shrinkImage(file, maxSide, quality){
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file); const img = new Image();
+    img.onload = () => {
+      const sc = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const c = document.createElement("canvas"); c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("bad image")); };
+    img.src = url;
+  });
+}
+async function uploadBookie(id, file){
+  if(!isAdmin) return;
+  if(!/^image\//.test(file.type)){ toast("Pick a screenshot or photo"); return; }
+  toast("Adding bookie slip…");
+  try{
+    let full = await shrinkImage(file, 1400, 0.72);
+    if(full.length > 900000) full = await shrinkImage(file, 1100, 0.6);
+    if(full.length > 900000) full = await shrinkImage(file, 900, 0.5);
+    const thumb = await shrinkImage(file, 260, 0.6);
+    await results.setBookie(id, thumb, full);
+    toast("Bookie slip added");
+  }catch(e){ toast("Couldn't add that image. Try a screenshot"); }
+}
+async function openBookie(id){
+  $("lightbox").hidden = false; $("lbImg").removeAttribute("src"); $("lbNote").textContent = "Loading…";
+  try{ const src = await results.bookieFull(id); if(src){ $("lbImg").src = src; $("lbNote").textContent = "The bookie's slip"; } else $("lbNote").textContent = "Couldn't load the image"; }
+  catch(e){ $("lbNote").textContent = "Couldn't load the image"; }
+}
+$("helpBtn").onclick = () => { if(isAdmin) $("helpBg").hidden = false; };
+$("helpClose").onclick = () => { $("helpBg").hidden = true; };
+$("helpBg").addEventListener("click", e => { if(e.target.id === "helpBg") $("helpBg").hidden = true; });
+document.addEventListener("keydown", e => { if(e.key === "Escape") $("helpBg").hidden = true; });
+$("lightbox").addEventListener("click", e => { if(e.target.id === "lightbox" || e.target.id === "lbClose") $("lightbox").hidden = true; });
+document.addEventListener("keydown", e => { if(e.key === "Escape") $("lightbox").hidden = true; });
 
 /* ---------- share a slip as an image ---------- */
 async function shareSlipImage(x){
@@ -1478,6 +1707,7 @@ function applyRole(){
   $("adminBadge").hidden = !isAdmin;
   $("roleBtn").textContent = isAdmin ? "Log out" : "Admin login";
   if(!isAdmin && editing) closeEditor();
+  if(!isAdmin) $("helpBg").hidden = true;
   $("leagueChips").hidden = !isAdmin || current !== "teams";
   if(!resultsStarted){ resultsStarted = true; results.start(); } else results.render();
   if(!isAdmin) setReadout(slip.teams.length ? slip.teams[slip.teams.length-1].name : "Watching", "View only");
@@ -1506,7 +1736,7 @@ $("loginForm").addEventListener("submit", async e => {
 
 /* shared state: admin writes the wheel settings and the live slip, everyone else follows */
 var cfgDoc = null, liveDoc = null, lastCfg = "", lastLive = "", liveT = null;
-function cfgPayload(){ return {lists: JSON.parse(JSON.stringify(lists)), leagues: Object.assign({}, leagues), round}; }
+function cfgPayload(){ return {lists: JSON.parse(JSON.stringify(lists)), leagues: Object.assign({}, leagues), round, kos: Object.assign({}, kos), offDays: offDays.slice(), budget}; }
 async function pushConfig(){
   if(!isAdmin || !cfgDoc) return;
   const body = cfgPayload(); const key = JSON.stringify(body);
@@ -1524,7 +1754,10 @@ function pushLive(){
 }
 function applyConfig(d){
   if(!d) return;
-  lastCfg = JSON.stringify({lists:d.lists, leagues:d.leagues, round:d.round});
+  lastCfg = JSON.stringify({lists:d.lists, leagues:d.leagues, round:d.round, kos:d.kos, offDays:d.offDays, budget:d.budget});
+  if(d.kos) kos = Object.assign({early:true, three:true, late:true}, d.kos);
+  if(Array.isArray(d.offDays)) offDays = d.offDays.slice();
+  if(typeof d.budget === "number") budget = d.budget;
   if(d.lists) lists = Object.assign(JSON.parse(JSON.stringify(DEF)), d.lists);
   if(d.leagues) leagues = Object.assign({PL:true,CH:true,L1:true,L2:true}, d.leagues);
   if(d.round && ROUNDS.some(r => r.id === d.round)) round = d.round;
