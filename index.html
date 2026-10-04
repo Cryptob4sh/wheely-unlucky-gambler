@@ -220,6 +220,12 @@ button{font:inherit;cursor:pointer;color:inherit}
 .help summary:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 .help ol,.help ul{margin:8px 0 4px;padding-left:20px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.5}
 .help b{color:var(--gold);font-weight:700}
+.filters{width:100%;background:rgba(4,7,16,.72);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.filt-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.filt-head h3{margin:0;font-size:14px;font-weight:700}
+.filters .chips{row-gap:8px}
+.chip-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);align-self:center;width:62px;flex:none}
+.chip-br{flex-basis:100%;height:0}
 .results{width:100%;display:flex;flex-direction:column;gap:10px;margin-top:6px}
 .res-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 .res-head h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:18px;text-shadow:0 1px 3px rgba(0,0,0,.95)}
@@ -381,7 +387,7 @@ window.WUG = (function(){
           <div class="stage-title" id="stageTitle">Type of bet</div>
           <div class="stage-hint" id="stageHint">Spin to pick the bet for every selection</div>
         </div>
-        <div class="chips admin-only" id="leagueChips" hidden></div>
+        
       </div>
       <div class="wheel-box">
         <div class="pointer" aria-hidden="true"></div>
@@ -393,6 +399,10 @@ window.WUG = (function(){
         <button class="btn spin-all" id="allBtn">Spin the lot</button>
       </div>
       <div class="rows" id="rows"></div>
+      <section class="filters admin-only" aria-labelledby="filtTitle">
+        <div class="filt-head"><h3 id="filtTitle">Filters for the teams ball</h3><span class="note" id="filtCount"></span></div>
+        <div class="chips" id="leagueChips"></div>
+      </section>
     </section>
 
 
@@ -457,7 +467,7 @@ window.WUG = (function(){
 
     <details><summary>2. Filters: leagues, kick-off times and days</summary>
       <ul>
-        <li>Tap the <b>The teams</b> row. Chips appear above the ball.</li>
+        <li>The <b>Filters</b> box sits under the four ball rows (only you see it). It shows how many teams are on the teams ball.</li>
         <li><b>PL / CH / L1 / L2</b> switch whole leagues on or off.</li>
         <li><b>Early</b> = before 3pm, <b>3pm</b> = 3pm kick-offs, <b>Late</b> = after 3pm (5:30s, evening and Sunday 4:30s).</li>
         <li><b>Fri / Sat / Sun / Mon</b> switch days on or off. For a Saturday 3pm acca, leave only <b>Sat</b> and <b>3pm</b> on.</li>
@@ -921,7 +931,7 @@ function select(key, quiet){
   const w = WHEELS.find(w=>w.key===key);
   $("stageTitle").textContent = w.name;
   $("stageHint").textContent = w.hint;
-  $("leagueChips").hidden = key !== "teams";
+
   if(key === "stake" && budget) $("stageHint").textContent = "How much goes on it. " + gbpFmt(budgetLeft(true)) + " of this week's " + gbpFmt(budget) + " left";
   if(!quiet) setReadout("Spin it", "Ready");
   else if(!spinning) setReadout("Spin it", w.name);
@@ -969,6 +979,7 @@ $("rows").addEventListener("keydown", e => {
 
 function renderChips(){
   const el = $("leagueChips"); el.innerHTML = "";
+  { const s0 = document.createElement("span"); s0.className = "chip-label"; s0.textContent = "League"; el.appendChild(s0); }
   Object.keys(LEAGUES).forEach(k => {
     const n = TEAMS_RAW[k].length;
     const b = document.createElement("button");
@@ -985,9 +996,10 @@ function renderChips(){
     };
     el.appendChild(b);
   });
+  const fc = $("filtCount"); if(fc) fc.textContent = segments("teams").length + " teams on the ball";
   if(round === "all") return;
-  const sep = () => { const s2 = document.createElement("span"); s2.className = "chip-sep"; el.appendChild(s2); };
-  sep();
+  const sep = (t) => { const br = document.createElement("span"); br.className = "chip-br"; el.appendChild(br); const s2 = document.createElement("span"); s2.className = "chip-label"; s2.textContent = t; el.appendChild(s2); };
+  sep("Kick-off");
   [["early","Early","Before 3pm"],["three","3pm","3pm kick-offs"],["late","Late","After 3pm"]].forEach(([k, lbl, tip]) => {
     const b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", kos[k] !== false); b.title = tip; b.textContent = lbl;
     b.onclick = () => {
@@ -999,7 +1011,7 @@ function renderChips(){
   });
   const days = roundDays();
   if(days.length > 1){
-    sep();
+    sep("Day");
     days.forEach(d => {
       const b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", !offDays.includes(d)); b.textContent = d;
       b.onclick = () => {
@@ -1013,6 +1025,7 @@ function renderChips(){
     });
   }
 }
+function filtCount(){ const fc = $("filtCount"); if(fc) fc.textContent = segments("teams").length + " teams on the ball"; }
 function afterFilter(){
   renderChips(); renderRows(); renderFixtures(); if(current === "teams" && !spinning){ rot = 0; draw(); }
   toast(segments("teams").length + " teams on the wheel");
@@ -1060,6 +1073,7 @@ function renderSlip(){
     </div>
     ${predictBox()}`;
   $("copyBtn").onclick = copySlip;
+  filtCount();
   $("shareBtn").onclick = () => shareSlipImage(Object.assign({}, slip));
   $("saveBtn").onclick = saveToResults;
   renderFixtures();
@@ -1708,7 +1722,7 @@ function applyRole(){
   $("roleBtn").textContent = isAdmin ? "Log out" : "Admin login";
   if(!isAdmin && editing) closeEditor();
   if(!isAdmin) $("helpBg").hidden = true;
-  $("leagueChips").hidden = !isAdmin || current !== "teams";
+
   if(!resultsStarted){ resultsStarted = true; results.start(); } else results.render();
   if(!isAdmin) setReadout(slip.teams.length ? slip.teams[slip.teams.length-1].name : "Watching", "View only");
   renderSlip(); updateSpinBtn();
