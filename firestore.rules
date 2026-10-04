@@ -1,0 +1,39 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // The admin is the one email user in Firebase Authentication.
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == "wba_ash2004@hotmail.com";
+    }
+
+    // Wheel settings, the live slip and live spins: everyone can look, only the admin can change.
+    match /wug_config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Saved slips and results: everyone can look, only the admin can change.
+    match /wug_slips/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Follower predictions: anyone signed in (anonymously is fine) can cast or change
+    // their own vote, one per slip. Only the admin can delete votes.
+    match /wug_votes/{voteId} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && voteId == request.resource.data.ref + "_" + request.auth.uid
+        && request.resource.data.pick in ["land", "bust"]
+        && request.resource.data.nick is string
+        && request.resource.data.nick.size() > 0
+        && request.resource.data.nick.size() <= 20
+        && request.resource.data.ref is string
+        && request.resource.data.ref.size() <= 20
+        && request.resource.data.keys().hasOnly(["ref", "uid", "nick", "pick", "at"]);
+      allow delete: if isAdmin();
+    }
+  }
+}

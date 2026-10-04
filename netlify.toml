@@ -1,0 +1,8 @@
+[[headers]]
+  for = "/fixtures.json"
+  [headers.values]
+    Cache-Control = "no-cache"
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
