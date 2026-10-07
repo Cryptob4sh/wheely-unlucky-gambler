@@ -25,6 +25,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Hidden private spinner: only the private login can read or write it. Nobody else, the admin included.
+    function isPrivateUser() {
+      return request.auth != null && request.auth.token.email == "wba_ash2004@icloud.com";
+    }
+    match /wug_p1_config/{docId} { allow read, write: if isPrivateUser(); }
+    match /wug_p1_slips/{docId} { allow read, write: if isPrivateUser(); }
+    match /wug_p1_slipimgs/{docId} { allow read, write: if isPrivateUser(); }
+
     // Follower predictions: anyone signed in (anonymously is fine) can cast or change
     // their own vote, one per slip. Only the admin can delete votes.
     match /wug_votes/{voteId} {

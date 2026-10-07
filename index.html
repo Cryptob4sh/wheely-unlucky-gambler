@@ -43,6 +43,7 @@ img{max-width:100%}
   --ch:#62c9ff; --ch2:#35a8ef;
   --l1:#ffa24a; --l1b:#ff8a1f;
   --l2:#56d68f; --l2b:#2fbf72;
+  --nl:#ff5f6d; --nl2:#f0f0f5;
   --f-display:"Bungee", "Impact", "Arial Black", sans-serif;
   --f-body:"Barlow", "Segoe UI", system-ui, sans-serif;
   --f-slip:"Courier Prime", "Courier New", monospace;
@@ -226,6 +227,13 @@ button{font:inherit;cursor:pointer;color:inherit}
 .filters .chips{row-gap:8px}
 .chip-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);align-self:center;width:62px;flex:none}
 .chip-br{flex-basis:100%;height:0}
+.small-print{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;margin-top:22px;font-size:11px;color:rgba(200,208,230,.55);text-shadow:0 1px 2px rgba(0,0,0,.8)}
+.tc-link{border:0;background:transparent;color:inherit;font:inherit;font-size:11px;text-decoration:underline;padding:4px;cursor:pointer}
+body.private-mode .small-print .tc-link{display:none}
+.priv-banner{width:100%;order:3;background:rgba(62,224,106,.14);border:1px solid rgba(62,224,106,.5);color:#bff5cf;border-radius:10px;padding:6px 10px;font-size:13px;font-weight:600}
+.priv-banner .link-btn{color:#bff5cf;font-size:13px}
+.priv-gate{position:fixed;inset:0;z-index:80;background:#050a1a;display:grid;place-items:center;padding:16px}
+body.private-mode #adminBadge{display:none!important}
 .results{width:100%;display:flex;flex-direction:column;gap:10px;margin-top:6px}
 .res-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 .res-head h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:18px;text-shadow:0 1px 3px rgba(0,0,0,.95)}
@@ -252,6 +260,10 @@ button{font:inherit;cursor:pointer;color:inherit}
 .slip-actions .save-btn:not([disabled]){background:var(--win);color:#fff;border-color:var(--win)}
 .note{color:#b6bfd8;font-size:12px;line-height:1.5}
 .leg-fx{display:block;font-weight:400;font-size:12px;color:var(--paper-mute)}
+.rab{display:block;margin-top:3px;font-weight:400;font-size:12px;line-height:1.35;color:var(--paper-ink)}
+.rab span{display:block}
+.rab b{font-weight:700}
+.rs-legs .rab{color:inherit;opacity:.85}
 .fx-panel{background:rgba(22,31,53,.88);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
 .fx-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
 .fx-head h2{margin:0;font-family:var(--f-display);font-weight:400;font-size:16px}
@@ -344,6 +356,7 @@ const FIREBASE_CONFIG = {
   appId: "1:980077576172:web:a6c10b491535338f254ac9"
 };
 const ADMIN_EMAIL = "wba_ash2004@hotmail.com";
+const PRIVATE_EMAIL = "wba_ash2004@icloud.com";   /* the hidden private spinner's login (password only on the page) */
 /* ===================================================================== */
 window.WUG = (function(){
   let fs = null, auth = null;
@@ -353,9 +366,11 @@ window.WUG = (function(){
       fs = firebase.firestore(); auth = firebase.auth();
     }
   }catch(e){ console.warn("Firebase didn't start:", e); }
-  const map = p => p.replace(/^slips(?=\/|$)/, "wug_slips").replace(/^votes(?=\/|$)/, "wug_votes").replace(/^slipimgs(?=\/|$)/, "wug_slipimgs").replace(/^config\//, "wug_config/");
+  let isPrivate = false; try{ isPrivate = localStorage.getItem("wug.mode") === "private"; }catch(e){}
+  const pre = isPrivate ? "wug_p1_" : "wug_";
+  const map = p => p.replace(/^slips(?=\/|$)/, pre + "slips").replace(/^votes(?=\/|$)/, pre + "votes").replace(/^slipimgs(?=\/|$)/, pre + "slipimgs").replace(/^config\//, pre + "config/");
   const db = fs ? { collection: p => fs.collection(map(p)), doc: p => fs.doc(map(p)) } : null;
-  return { db, auth, adminEmail: ADMIN_EMAIL };
+  return { db, auth, adminEmail: ADMIN_EMAIL, privateEmail: PRIVATE_EMAIL, isPrivate };
 })();
 </script>
 
@@ -371,6 +386,7 @@ window.WUG = (function(){
       <p class="sub">Four balls. One slip. No luck whatsoever.</p>
       </div>
     </div>
+    <div class="priv-banner" id="privBanner" hidden>Private spinner: only you can see this page. <button type="button" class="link-btn" id="privExit">Leave</button></div>
     <div class="hdr-actions">
       <span class="admin-badge" id="adminBadge" hidden>Admin</span>
       <button class="btn admin-only" id="helpBtn" type="button">How it works</button>
@@ -422,9 +438,28 @@ window.WUG = (function(){
         <div class="seg admin-only" id="roundSeg" role="group" aria-label="Which fixtures to spin"></div>
         <div id="fxList"></div>
       </section>
-      <p class="note">Just for fun. Tap the box next to each team to mark it won (✓) or lost (✗) as the results come in. Your wheel edits stay on this device.</p>
+      <p class="note">Just for fun. 18+. Please gamble responsibly.</p>
     </aside>
   </div>
+  <footer class="small-print"><button type="button" class="tc-link" id="tcBtn">T&amp;Cs apply</button><span>18+ · BeGambleAware.org · Odds subject to change</span></footer>
+</div>
+<div class="priv-gate" id="privGate" hidden>
+  <form class="sheet" id="privGateForm" autocomplete="off">
+    <h3>Private</h3>
+    <label class="note" for="privPw2">Enter the password.</label>
+    <input class="pw-input" id="privPw2" type="password" autocomplete="off" autocapitalize="none" spellcheck="false">
+    <p class="pw-err" id="privErr2" hidden>That password isn't right. Try again.</p>
+    <div class="acts"><button type="button" class="btn" id="privLeave2">Back to the main site</button><button type="submit" class="btn primary">Unlock</button></div>
+  </form>
+</div>
+<div class="sheet-bg" id="tcBg" hidden>
+  <form class="sheet" id="tcForm" autocomplete="off" role="dialog" aria-modal="true" aria-labelledby="tcTitle">
+    <h3 id="tcTitle">Terms &amp; conditions</h3>
+    <label class="note" for="tcPw">Enter the password to continue.</label>
+    <input class="pw-input" id="tcPw" type="password" autocomplete="off" autocapitalize="none" spellcheck="false">
+    <p class="pw-err" id="tcErr" hidden>That password isn't right.</p>
+    <div class="acts"><button type="button" class="btn" id="tcCancel">Close</button><button type="submit" class="btn primary">Continue</button></div>
+  </form>
 </div>
 
 <div class="sheet-bg" id="sheetBg" hidden>
@@ -468,7 +503,7 @@ window.WUG = (function(){
     <details><summary>2. Filters: leagues, kick-off times and days</summary>
       <ul>
         <li>The <b>Filters</b> box sits under the four ball rows (only you see it). It shows how many teams are on the teams ball.</li>
-        <li><b>PL / CH / L1 / L2</b> switch whole leagues on or off.</li>
+        <li><b>PL / CH / L1 / L2 / NL</b> switch whole leagues on or off. NL is the UEFA Nations League (only on international weeks).</li>
         <li><b>Early</b> = before 3pm, <b>3pm</b> = 3pm kick-offs, <b>Late</b> = after 3pm (5:30s, evening and Sunday 4:30s).</li>
         <li><b>Fri / Sat / Sun / Mon</b> switch days on or off. For a Saturday 3pm acca, leave only <b>Sat</b> and <b>3pm</b> on.</li>
         <li>Games that don't match are faded in the Fixtures list. At least one chip in each group must stay on.</li>
@@ -537,29 +572,37 @@ const LEAGUES = {
   PL:{name:"Premier League", short:"PL", c:["--pl","--pl2"]},
   CH:{name:"Championship", short:"CH", c:["--ch","--ch2"]},
   L1:{name:"League One", short:"L1", c:["--l1","--l1b"]},
-  L2:{name:"League Two", short:"L2", c:["--l2","--l2b"]}
+  L2:{name:"League Two", short:"L2", c:["--l2","--l2b"]},
+  NL:{name:"Nations League", short:"NL", c:["--nl","--nl2"]}
 };
 const TEAMS_RAW = {
   PL:["Arsenal","Aston Villa","Bournemouth","Brentford","Brighton","Chelsea","Coventry","Crystal Palace","Everton","Fulham","Hull City","Ipswich","Leeds","Liverpool","Man City","Man Utd","Newcastle","Nottm Forest","Sunderland","Tottenham"],
   CH:["Birmingham","Blackburn","Bolton","Bristol City","Burnley","Cardiff","Charlton","Derby","Lincoln","Middlesbrough","Millwall","Norwich","Portsmouth","Preston","QPR","Sheff Utd","Southampton","Stoke","Swansea","Watford","West Brom","West Ham","Wolves","Wrexham"],
   L1:["AFC Wimbledon","Barnsley","Blackpool","Bradford","Bromley","Burton","Cambridge Utd","Doncaster","Huddersfield","Leicester","Leyton Orient","Luton","Mansfield","MK Dons","Notts County","Oxford Utd","Peterborough","Plymouth","Reading","Sheff Wed","Stevenage","Stockport","Wigan","Wycombe"],
-  L2:["Accrington","Barnet","Bristol Rovers","Cheltenham","Chesterfield","Colchester","Crawley","Crewe","Exeter","Fleetwood","Gillingham","Grimsby","Newport","Northampton","Oldham","Port Vale","Rochdale","Rotherham","Salford","Shrewsbury","Swindon","Tranmere","Walsall","York City"]
+  L2:["Accrington","Barnet","Bristol Rovers","Cheltenham","Chesterfield","Colchester","Crawley","Crewe","Exeter","Fleetwood","Gillingham","Grimsby","Newport","Northampton","Oldham","Port Vale","Rochdale","Rotherham","Salford","Shrewsbury","Swindon","Tranmere","Walsall","York City"],
+  NL:["Albania", "Andorra", "Armenia", "Austria", "Azerbaijan", "Belarus", "Belgium", "Bosnia", "Bulgaria", "Croatia", "Cyprus", "Czechia", "Denmark", "England", "Estonia", "Faroe Islands", "Finland", "France", "Georgia", "Germany", "Gibraltar", "Greece", "Hungary", "Iceland", "Israel", "Italy", "Kazakhstan", "Kosovo", "Latvia", "Liechtenstein", "Lithuania", "Luxembourg", "Malta", "Moldova", "Montenegro", "N. Ireland", "N. Macedonia", "Netherlands", "Norway", "Poland", "Portugal", "Rep. of Ireland", "Romania", "San Marino", "Scotland", "Serbia", "Slovakia", "Slovenia", "Spain", "Sweden", "Switzerland", "Türkiye", "Ukraine", "Wales"]
 };
+/* The Nations League only appears on the private (T&Cs) page. */
+const WUG_PRIV = !!(window.WUG && window.WUG.isPrivate);
+if(!WUG_PRIV){ delete LEAGUES.NL; delete TEAMS_RAW.NL; }
+function publicRounds(rs){ return WUG_PRIV ? rs : rs.map(r => Object.assign({}, r, {games: (r.games || []).filter(g => g.lg !== "NL")})).filter(r => r.id === "all" || r.games.length || !r.hadGames); }
 const TEAMS = [];
 Object.keys(TEAMS_RAW).forEach(lg => TEAMS_RAW[lg].forEach((name,i) => TEAMS.push({name, lg, i})));
 
 /* Fixtures: [league, home, away, day, kick-off, postponed?]  Source: Sky Sports fixtures, checked 1 Oct 2026 */
 /* ===== WUG-FIXTURES-START =====
    Updated automatically every Friday. Each round: id (first day, YYYY-MM-DD), label, sub (note),
-   end (last day, YYYY-MM-DD), games: [league PL|CH|L1|L2, home, away, day e.g. "Sat 10 Oct", kick-off e.g. "3pm" or "P" if postponed].
+   end (last day, YYYY-MM-DD), games: [league PL|CH|L1|L2|NL, home, away, day e.g. "Sat 10 Oct", kick-off e.g. "3pm" or "P" if postponed].
    Team names must match the short names in TEAMS_RAW. */
-const FIXTURE_ROUNDS = [{"id": "2026-10-09", "label": "9–12 Oct", "sub": "All four leagues", "end": "2026-10-12", "games": [["CH", "West Ham", "QPR", "Fri 9 Oct", "8pm"], ["PL", "Arsenal", "Leeds", "Sat 10 Oct", "12:30pm"], ["PL", "Aston Villa", "Brentford", "Sat 10 Oct", "3pm"], ["PL", "Chelsea", "Bournemouth", "Sat 10 Oct", "3pm"], ["PL", "Ipswich", "Fulham", "Sat 10 Oct", "3pm"], ["PL", "Sunderland", "Brighton", "Sat 10 Oct", "3pm"], ["PL", "Man Utd", "Tottenham", "Sat 10 Oct", "5:30pm"], ["CH", "Charlton", "Bristol City", "Sat 10 Oct", "12:30pm"], ["CH", "Swansea", "Norwich", "Sat 10 Oct", "12:30pm"], ["CH", "West Brom", "Birmingham", "Sat 10 Oct", "12:30pm"], ["CH", "Blackburn", "Cardiff", "Sat 10 Oct", "3pm"], ["CH", "Bolton", "Stoke", "Sat 10 Oct", "3pm"], ["CH", "Derby", "Wrexham", "Sat 10 Oct", "3pm"], ["CH", "Middlesbrough", "Wolves", "Sat 10 Oct", "3pm"], ["CH", "Preston", "Millwall", "Sat 10 Oct", "3pm"], ["CH", "Sheff Utd", "Lincoln", "Sat 10 Oct", "3pm"], ["CH", "Watford", "Burnley", "Sat 10 Oct", "3pm"], ["L1", "Notts County", "Oxford Utd", "Sat 10 Oct", "12:30pm"], ["L1", "Plymouth", "AFC Wimbledon", "Sat 10 Oct", "12:30pm"], ["L1", "Bradford", "Leyton Orient", "Sat 10 Oct", "3pm"], ["L1", "Cambridge Utd", "Blackpool", "Sat 10 Oct", "3pm"], ["L1", "Doncaster", "Burton", "Sat 10 Oct", "3pm"], ["L1", "Huddersfield", "Sheff Wed", "Sat 10 Oct", "3pm"], ["L1", "Leicester", "Peterborough", "Sat 10 Oct", "3pm"], ["L1", "Mansfield", "Bromley", "Sat 10 Oct", "3pm"], ["L1", "MK Dons", "Reading", "Sat 10 Oct", "3pm"], ["L1", "Stevenage", "Wigan", "Sat 10 Oct", "3pm"], ["L1", "Stockport", "Barnsley", "Sat 10 Oct", "3pm"], ["L1", "Wycombe", "Luton", "Sat 10 Oct", "3pm"], ["L2", "Oldham", "Accrington", "Sat 10 Oct", "12:30pm"], ["L2", "Swindon", "Crewe", "Sat 10 Oct", "12:30pm"], ["L2", "Bristol Rovers", "Barnet", "Sat 10 Oct", "3pm"], ["L2", "Cheltenham", "Salford", "Sat 10 Oct", "3pm"], ["L2", "Crawley", "Chesterfield", "Sat 10 Oct", "3pm"], ["L2", "Fleetwood", "Walsall", "Sat 10 Oct", "3pm"], ["L2", "Newport", "Colchester", "Sat 10 Oct", "3pm"], ["L2", "Port Vale", "Grimsby", "Sat 10 Oct", "3pm"], ["L2", "Rotherham", "Gillingham", "Sat 10 Oct", "3pm"], ["L2", "Shrewsbury", "Exeter", "Sat 10 Oct", "3pm"], ["L2", "Tranmere", "Rochdale", "Sat 10 Oct", "3pm"], ["L2", "York City", "Northampton", "Sat 10 Oct", "3pm"], ["PL", "Crystal Palace", "Nottm Forest", "Sun 11 Oct", "2pm"], ["PL", "Hull City", "Everton", "Sun 11 Oct", "2pm"], ["PL", "Liverpool", "Man City", "Sun 11 Oct", "4:30pm"], ["CH", "Southampton", "Portsmouth", "Sun 11 Oct", "12pm"], ["PL", "Coventry", "Newcastle", "Mon 12 Oct", "8pm"]]}, {"id": "2026-10-13", "label": "13–15 Oct", "sub": "Midweek: Championship, League One", "end": "2026-10-15", "games": [["CH", "Bristol City", "Blackburn", "Tue 13 Oct", "7:45pm"], ["CH", "Burnley", "Charlton", "Tue 13 Oct", "7:45pm"], ["CH", "Cardiff", "Watford", "Tue 13 Oct", "7:45pm"], ["CH", "Millwall", "Swansea", "Tue 13 Oct", "7:45pm"], ["CH", "Wolves", "Bolton", "Tue 13 Oct", "7:45pm"], ["CH", "Wrexham", "West Brom", "Tue 13 Oct", "7:45pm"], ["CH", "Birmingham", "Preston", "Tue 13 Oct", "8pm"], ["CH", "Stoke", "Middlesbrough", "Tue 13 Oct", "8pm"], ["CH", "Norwich", "Southampton", "Wed 14 Oct", "7:45pm"], ["CH", "Portsmouth", "Sheff Utd", "Wed 14 Oct", "7:45pm"], ["CH", "QPR", "Derby", "Wed 14 Oct", "7:45pm"], ["CH", "Lincoln", "West Ham", "Wed 14 Oct", "8pm"], ["L1", "Mansfield", "Oxford Utd", "Thu 15 Oct", "8pm"]]}, {"id": "2026-10-16", "label": "16–19 Oct", "sub": "All four leagues", "end": "2026-10-19", "games": [["CH", "Burnley", "Wolves", "Fri 16 Oct", "8pm"], ["PL", "Everton", "Chelsea", "Sat 17 Oct", "12:30pm"], ["PL", "Brentford", "Liverpool", "Sat 17 Oct", "3pm"], ["PL", "Fulham", "Hull City", "Sat 17 Oct", "3pm"], ["PL", "Man City", "Ipswich", "Sat 17 Oct", "3pm"], ["PL", "Newcastle", "Aston Villa", "Sat 17 Oct", "5:30pm"], ["CH", "Middlesbrough", "Cardiff", "Sat 17 Oct", "12:30pm"], ["CH", "Millwall", "Lincoln", "Sat 17 Oct", "12:30pm"], ["CH", "Watford", "Charlton", "Sat 17 Oct", "12:30pm"], ["CH", "Birmingham", "QPR", "Sat 17 Oct", "3pm"], ["CH", "Bristol City", "Sheff Utd", "Sat 17 Oct", "3pm"], ["CH", "Derby", "Stoke", "Sat 17 Oct", "3pm"], ["CH", "Norwich", "Portsmouth", "Sat 17 Oct", "3pm"], ["CH", "Southampton", "Bolton", "Sat 17 Oct", "3pm"], ["CH", "Swansea", "West Ham", "Sat 17 Oct", "3pm"], ["CH", "West Brom", "Blackburn", "Sat 17 Oct", "3pm"], ["CH", "Wrexham", "Preston", "Sat 17 Oct", "3pm"], ["L1", "MK Dons", "Luton", "Sat 17 Oct", "12:30pm"], ["L1", "Peterborough", "Burton", "Sat 17 Oct", "12:30pm"], ["L1", "Barnsley", "Cambridge Utd", "Sat 17 Oct", "3pm"], ["L1", "Bradford", "Stevenage", "Sat 17 Oct", "3pm"], ["L1", "Leicester", "Doncaster", "Sat 17 Oct", "3pm"], ["L1", "Leyton Orient", "Blackpool", "Sat 17 Oct", "3pm"], ["L1", "Plymouth", "Huddersfield", "Sat 17 Oct", "3pm"], ["L1", "Sheff Wed", "AFC Wimbledon", "Sat 17 Oct", "3pm"], ["L1", "Stockport", "Bromley", "Sat 17 Oct", "3pm"], ["L1", "Wigan", "Reading", "Sat 17 Oct", "3pm"], ["L1", "Wycombe", "Notts County", "Sat 17 Oct", "3pm"], ["L2", "Fleetwood", "Rotherham", "Sat 17 Oct", "12:30pm"], ["L2", "Shrewsbury", "Bristol Rovers", "Sat 17 Oct", "12:30pm"], ["L2", "Accrington", "Gillingham", "Sat 17 Oct", "3pm"], ["L2", "Colchester", "Exeter", "Sat 17 Oct", "3pm"], ["L2", "Crewe", "Rochdale", "Sat 17 Oct", "3pm"], ["L2", "Grimsby", "Northampton", "Sat 17 Oct", "3pm"], ["L2", "Newport", "York City", "Sat 17 Oct", "3pm"], ["L2", "Oldham", "Cheltenham", "Sat 17 Oct", "3pm"], ["L2", "Port Vale", "Chesterfield", "Sat 17 Oct", "3pm"], ["L2", "Salford", "Crawley", "Sat 17 Oct", "3pm"], ["L2", "Swindon", "Walsall", "Sat 17 Oct", "3pm"], ["L2", "Tranmere", "Barnet", "Sat 17 Oct", "3pm"], ["PL", "Bournemouth", "Sunderland", "Sun 18 Oct", "2pm"], ["PL", "Brighton", "Crystal Palace", "Sun 18 Oct", "2pm"], ["PL", "Leeds", "Man Utd", "Sun 18 Oct", "2pm"], ["PL", "Nottm Forest", "Arsenal", "Sun 18 Oct", "4:30pm"], ["PL", "Tottenham", "Coventry", "Mon 19 Oct", "8pm"]]}];
+const FIXTURE_ROUNDS = [{"id": "2026-10-09", "label": "9–12 Oct", "sub": "All four leagues", "end": "2026-10-12", "games": [["CH", "West Ham", "QPR", "Fri 9 Oct", "8pm"], ["PL", "Arsenal", "Leeds", "Sat 10 Oct", "12:30pm"], ["PL", "Aston Villa", "Brentford", "Sat 10 Oct", "3pm"], ["PL", "Chelsea", "Bournemouth", "Sat 10 Oct", "3pm"], ["PL", "Ipswich", "Fulham", "Sat 10 Oct", "3pm"], ["PL", "Sunderland", "Brighton", "Sat 10 Oct", "3pm"], ["PL", "Man Utd", "Tottenham", "Sat 10 Oct", "5:30pm"], ["CH", "Charlton", "Bristol City", "Sat 10 Oct", "12:30pm"], ["CH", "Swansea", "Norwich", "Sat 10 Oct", "12:30pm"], ["CH", "West Brom", "Birmingham", "Sat 10 Oct", "12:30pm"], ["CH", "Blackburn", "Cardiff", "Sat 10 Oct", "3pm"], ["CH", "Bolton", "Stoke", "Sat 10 Oct", "3pm"], ["CH", "Derby", "Wrexham", "Sat 10 Oct", "3pm"], ["CH", "Middlesbrough", "Wolves", "Sat 10 Oct", "3pm"], ["CH", "Preston", "Millwall", "Sat 10 Oct", "3pm"], ["CH", "Sheff Utd", "Lincoln", "Sat 10 Oct", "3pm"], ["CH", "Watford", "Burnley", "Sat 10 Oct", "3pm"], ["L1", "Notts County", "Oxford Utd", "Sat 10 Oct", "12:30pm"], ["L1", "Plymouth", "AFC Wimbledon", "Sat 10 Oct", "12:30pm"], ["L1", "Bradford", "Leyton Orient", "Sat 10 Oct", "3pm"], ["L1", "Cambridge Utd", "Blackpool", "Sat 10 Oct", "3pm"], ["L1", "Doncaster", "Burton", "Sat 10 Oct", "3pm"], ["L1", "Huddersfield", "Sheff Wed", "Sat 10 Oct", "3pm"], ["L1", "Leicester", "Peterborough", "Sat 10 Oct", "3pm"], ["L1", "Mansfield", "Bromley", "Sat 10 Oct", "3pm"], ["L1", "MK Dons", "Reading", "Sat 10 Oct", "3pm"], ["L1", "Stevenage", "Wigan", "Sat 10 Oct", "3pm"], ["L1", "Stockport", "Barnsley", "Sat 10 Oct", "3pm"], ["L1", "Wycombe", "Luton", "Sat 10 Oct", "3pm"], ["L2", "Oldham", "Accrington", "Sat 10 Oct", "12:30pm"], ["L2", "Swindon", "Crewe", "Sat 10 Oct", "12:30pm"], ["L2", "Bristol Rovers", "Barnet", "Sat 10 Oct", "3pm"], ["L2", "Cheltenham", "Salford", "Sat 10 Oct", "3pm"], ["L2", "Crawley", "Chesterfield", "Sat 10 Oct", "3pm"], ["L2", "Fleetwood", "Walsall", "Sat 10 Oct", "3pm"], ["L2", "Newport", "Colchester", "Sat 10 Oct", "3pm"], ["L2", "Port Vale", "Grimsby", "Sat 10 Oct", "3pm"], ["L2", "Rotherham", "Gillingham", "Sat 10 Oct", "3pm"], ["L2", "Shrewsbury", "Exeter", "Sat 10 Oct", "3pm"], ["L2", "Tranmere", "Rochdale", "Sat 10 Oct", "3pm"], ["L2", "York City", "Northampton", "Sat 10 Oct", "3pm"], ["PL", "Crystal Palace", "Nottm Forest", "Sun 11 Oct", "2pm"], ["PL", "Hull City", "Everton", "Sun 11 Oct", "2pm"], ["PL", "Liverpool", "Man City", "Sun 11 Oct", "4:30pm"], ["CH", "Southampton", "Portsmouth", "Sun 11 Oct", "12pm"], ["PL", "Coventry", "Newcastle", "Mon 12 Oct", "8pm"]]}, {"id": "2026-10-13", "label": "13–15 Oct", "sub": "Midweek: Championship, League One", "end": "2026-10-15", "games": [["CH", "Bristol City", "Blackburn", "Tue 13 Oct", "7:45pm"], ["CH", "Burnley", "Charlton", "Tue 13 Oct", "7:45pm"], ["CH", "Cardiff", "Watford", "Tue 13 Oct", "7:45pm"], ["CH", "Millwall", "Swansea", "Tue 13 Oct", "7:45pm"], ["CH", "Wolves", "Bolton", "Tue 13 Oct", "7:45pm"], ["CH", "Wrexham", "West Brom", "Tue 13 Oct", "7:45pm"], ["CH", "Birmingham", "Preston", "Tue 13 Oct", "8pm"], ["CH", "Stoke", "Middlesbrough", "Tue 13 Oct", "8pm"], ["CH", "Norwich", "Southampton", "Wed 14 Oct", "7:45pm"], ["CH", "Portsmouth", "Sheff Utd", "Wed 14 Oct", "7:45pm"], ["CH", "QPR", "Derby", "Wed 14 Oct", "7:45pm"], ["CH", "Lincoln", "West Ham", "Wed 14 Oct", "8pm"], ["L1", "Mansfield", "Oxford Utd", "Thu 15 Oct", "8pm"]]}, {"id": "2026-10-16", "label": "16–19 Oct", "sub": "All four leagues", "end": "2026-10-19", "games": [["CH", "Burnley", "Wolves", "Fri 16 Oct", "8pm"], ["PL", "Everton", "Chelsea", "Sat 17 Oct", "12:30pm"], ["PL", "Brentford", "Liverpool", "Sat 17 Oct", "3pm"], ["PL", "Fulham", "Hull City", "Sat 17 Oct", "3pm"], ["PL", "Man City", "Ipswich", "Sat 17 Oct", "3pm"], ["PL", "Newcastle", "Aston Villa", "Sat 17 Oct", "5:30pm"], ["CH", "Middlesbrough", "Cardiff", "Sat 17 Oct", "12:30pm"], ["CH", "Millwall", "Lincoln", "Sat 17 Oct", "12:30pm"], ["CH", "Watford", "Charlton", "Sat 17 Oct", "12:30pm"], ["CH", "Birmingham", "QPR", "Sat 17 Oct", "3pm"], ["CH", "Bristol City", "Sheff Utd", "Sat 17 Oct", "3pm"], ["CH", "Derby", "Stoke", "Sat 17 Oct", "3pm"], ["CH", "Norwich", "Portsmouth", "Sat 17 Oct", "3pm"], ["CH", "Southampton", "Bolton", "Sat 17 Oct", "3pm"], ["CH", "Swansea", "West Ham", "Sat 17 Oct", "3pm"], ["CH", "West Brom", "Blackburn", "Sat 17 Oct", "3pm"], ["CH", "Wrexham", "Preston", "Sat 17 Oct", "3pm"], ["L1", "MK Dons", "Luton", "Sat 17 Oct", "12:30pm"], ["L1", "Peterborough", "Burton", "Sat 17 Oct", "12:30pm"], ["L1", "Barnsley", "Cambridge Utd", "Sat 17 Oct", "3pm"], ["L1", "Bradford", "Stevenage", "Sat 17 Oct", "3pm"], ["L1", "Leicester", "Doncaster", "Sat 17 Oct", "3pm"], ["L1", "Leyton Orient", "Blackpool", "Sat 17 Oct", "3pm"], ["L1", "Plymouth", "Huddersfield", "Sat 17 Oct", "3pm"], ["L1", "Sheff Wed", "AFC Wimbledon", "Sat 17 Oct", "3pm"], ["L1", "Stockport", "Bromley", "Sat 17 Oct", "3pm"], ["L1", "Wigan", "Reading", "Sat 17 Oct", "3pm"], ["L1", "Wycombe", "Notts County", "Sat 17 Oct", "3pm"], ["L2", "Fleetwood", "Rotherham", "Sat 17 Oct", "12:30pm"], ["L2", "Shrewsbury", "Bristol Rovers", "Sat 17 Oct", "12:30pm"], ["L2", "Accrington", "Gillingham", "Sat 17 Oct", "3pm"], ["L2", "Colchester", "Exeter", "Sat 17 Oct", "3pm"], ["L2", "Crewe", "Rochdale", "Sat 17 Oct", "3pm"], ["L2", "Grimsby", "Northampton", "Sat 17 Oct", "3pm"], ["L2", "Newport", "York City", "Sat 17 Oct", "3pm"], ["L2", "Oldham", "Cheltenham", "Sat 17 Oct", "3pm"], ["L2", "Port Vale", "Chesterfield", "Sat 17 Oct", "3pm"], ["L2", "Salford", "Crawley", "Sat 17 Oct", "3pm"], ["L2", "Swindon", "Walsall", "Sat 17 Oct", "3pm"], ["L2", "Tranmere", "Barnet", "Sat 17 Oct", "3pm"], ["PL", "Bournemouth", "Sunderland", "Sun 18 Oct", "2pm"], ["PL", "Brighton", "Crystal Palace", "Sun 18 Oct", "2pm"], ["PL", "Leeds", "Man Utd", "Sun 18 Oct", "2pm"], ["PL", "Nottm Forest", "Arsenal", "Sun 18 Oct", "4:30pm"], ["PL", "Tottenham", "Coventry", "Mon 19 Oct", "8pm"]]}, {"id": "2026-11-12", "label": "12–14 Nov", "sub": "Nations League, matchday 5 (UK times)", "end": "2026-11-14", "games": [["NL", "Türkiye", "Belgium", "Thu 12 Nov", "5pm"], ["NL", "Armenia", "Cyprus", "Thu 12 Nov", "5pm"], ["NL", "Italy", "France", "Thu 12 Nov", "7:45pm"], ["NL", "Czechia", "Spain", "Thu 12 Nov", "7:45pm"], ["NL", "England", "Croatia", "Thu 12 Nov", "7:45pm"], ["NL", "Albania", "Finland", "Thu 12 Nov", "7:45pm"], ["NL", "San Marino", "Belarus", "Thu 12 Nov", "7:45pm"], ["NL", "Montenegro", "Latvia", "Thu 12 Nov", "7:45pm"], ["NL", "Moldova", "Kazakhstan", "Fri 13 Nov", "5pm"], ["NL", "Netherlands", "Greece", "Fri 13 Nov", "7:45pm"], ["NL", "Serbia", "Germany", "Fri 13 Nov", "7:45pm"], ["NL", "Scotland", "N. Macedonia", "Fri 13 Nov", "7:45pm"], ["NL", "Slovenia", "Switzerland", "Fri 13 Nov", "7:45pm"], ["NL", "Slovakia", "Faroe Islands", "Fri 13 Nov", "7:45pm"], ["NL", "Bulgaria", "Iceland", "Fri 13 Nov", "7:45pm"], ["NL", "Luxembourg", "Estonia", "Fri 13 Nov", "7:45pm"], ["NL", "Andorra", "Gibraltar", "Fri 13 Nov", "7:45pm"], ["NL", "Liechtenstein", "Azerbaijan", "Fri 13 Nov", "7:45pm"], ["NL", "Kosovo", "Israel", "Sat 14 Nov", "2pm"], ["NL", "Norway", "Wales", "Sat 14 Nov", "5pm"], ["NL", "Georgia", "Hungary", "Sat 14 Nov", "5pm"], ["NL", "Portugal", "Denmark", "Sat 14 Nov", "7:45pm"], ["NL", "N. Ireland", "Ukraine", "Sat 14 Nov", "7:45pm"], ["NL", "Austria", "Rep. of Ireland", "Sat 14 Nov", "7:45pm"], ["NL", "Romania", "Poland", "Sat 14 Nov", "7:45pm"], ["NL", "Sweden", "Bosnia", "Sat 14 Nov", "7:45pm"]]}, {"id": "2026-11-15", "label": "15–17 Nov", "sub": "Nations League, matchday 6 (UK times)", "end": "2026-11-17", "games": [["NL", "Cyprus", "Montenegro", "Sun 15 Nov", "2pm"], ["NL", "Latvia", "Armenia", "Sun 15 Nov", "2pm"], ["NL", "Belarus", "Albania", "Sun 15 Nov", "5pm"], ["NL", "Finland", "San Marino", "Sun 15 Nov", "5pm"], ["NL", "Belgium", "Italy", "Sun 15 Nov", "7:45pm"], ["NL", "France", "Türkiye", "Sun 15 Nov", "7:45pm"], ["NL", "Croatia", "Czechia", "Sun 15 Nov", "7:45pm"], ["NL", "Spain", "England", "Sun 15 Nov", "7:45pm"], ["NL", "Faroe Islands", "Moldova", "Mon 16 Nov", "3pm"], ["NL", "Kazakhstan", "Slovakia", "Mon 16 Nov", "3pm"], ["NL", "Estonia", "Bulgaria", "Mon 16 Nov", "5pm"], ["NL", "Iceland", "Luxembourg", "Mon 16 Nov", "5pm"], ["NL", "Lithuania", "Liechtenstein", "Mon 16 Nov", "5pm"], ["NL", "Germany", "Netherlands", "Mon 16 Nov", "7:45pm"], ["NL", "Greece", "Serbia", "Mon 16 Nov", "7:45pm"], ["NL", "N. Macedonia", "Slovenia", "Mon 16 Nov", "7:45pm"], ["NL", "Switzerland", "Scotland", "Mon 16 Nov", "7:45pm"], ["NL", "Gibraltar", "Malta", "Mon 16 Nov", "7:45pm"], ["NL", "Denmark", "Norway", "Tue 17 Nov", "7:45pm"], ["NL", "Wales", "Portugal", "Tue 17 Nov", "7:45pm"], ["NL", "Hungary", "N. Ireland", "Tue 17 Nov", "7:45pm"], ["NL", "Ukraine", "Georgia", "Tue 17 Nov", "7:45pm"], ["NL", "Israel", "Austria", "Tue 17 Nov", "7:45pm"], ["NL", "Rep. of Ireland", "Kosovo", "Tue 17 Nov", "7:45pm"], ["NL", "Bosnia", "Romania", "Tue 17 Nov", "7:45pm"], ["NL", "Poland", "Sweden", "Tue 17 Nov", "7:45pm"]]}];
 /* ===== WUG-FIXTURES-END ===== */
 const ROUNDS = FIXTURE_ROUNDS.map(r => ({id:r.id, label:r.label, sub:r.sub, end:r.end, fx:(r.games||[]).map(g => g.join("|")).join("\n")}))
   .concat([{ id:"all", label:"All 92", sub:"Every club, no fixtures", end:"9999-12-31", fx:"" }]);
 ROUNDS.forEach(r => {
   r.games = r.fx.trim() ? r.fx.trim().split("\n").map(l => { const [lg,h,a,day,ko] = l.split("|"); return {lg,h,a,day,ko,p:ko==="P"}; }) : [];
+  r.hadGames = r.games.length > 0;
 });
+ROUNDS.splice(0, ROUNDS.length, ...publicRounds(ROUNDS));
 function defaultRound(){
   const today = new Date().toISOString().slice(0,10);
   const r = ROUNDS.find(r => r.id !== "all" && r.end >= today);
@@ -577,10 +620,10 @@ function fixtureFor(name, roundId){
 let RESULTS = {};   // "home|away|day" -> [homeGoals, awayGoals]
 function setFixtureData(d){
   if(!d || !Array.isArray(d.rounds)) return false;
-  const rs = d.rounds.filter(r => r && r.id && Array.isArray(r.games)).map(r => ({
-    id: r.id, label: r.label || r.id, sub: r.sub || "", end: r.end || r.id,
+  const rs = publicRounds(d.rounds.filter(r => r && r.id && Array.isArray(r.games)).map(r => ({
+    id: r.id, label: r.label || r.id, sub: r.sub || "", end: r.end || r.id, hadGames: r.games.length > 0,
     games: r.games.filter(g => Array.isArray(g) && g.length >= 5).map(g => ({lg:g[0], h:g[1], a:g[2], day:g[3], ko:g[4], p:g[4] === "P"}))
-  }));
+  })));
   if(!rs.length && !d.results) return false;
   if(rs.length){
     rs.push({ id:"all", label:"All 92", sub:"Every club, no fixtures", end:"9999-12-31", games:[] });
@@ -603,6 +646,11 @@ const BET_RULES = {
   "win to nil": (f,a) => f > a && a === 0, "double chance": (f,a) => f >= a, "clean sheet": (f,a) => a === 0,
   "draw no bet": (f,a) => f > a
 };
+/* Request A Bet: one team, four lines. Ball 2 is void (always 1 team). */
+function isRAB(bet){ return /request\s*a\s*bet/i.test(String(bet || "")); }
+function rabLines(l){ const opp = l.vs || "Their opponents"; return [["Most Corners Taken", l.name], ["Full Time Result", l.name], ["Most Shots on Target", l.name], ["Most Cards", opp]]; }
+function rabHtml(l){ return `<span class="rab">${rabLines(l).map(([m, t]) => `<span>${esc(m)}: <b>${esc(t)}</b></span>`).join("")}</span>`; }
+function rabText(l){ return rabLines(l).map(([m, t]) => m + ": " + t).join(", "); }
 function legKey(l){
   if(l.fk) return l.fk;
   if(!l.vs || !l.day) return null;
@@ -615,6 +663,7 @@ function legScore(l){
 }
 function legAuto(l, bet){
   const sc = legScore(l); if(!sc) return 0;
+  if(isRAB(bet)) return sc.gf > sc.ga ? 0 : 2;
   const fn = BET_RULES[String(bet || "").toLowerCase().trim()]; if(!fn) return 0;
   return fn(sc.gf, sc.ga) ? 1 : 2;
 }
@@ -655,7 +704,7 @@ function firstKickoff(teams){
 }
 
 const DEF = {
-  bet:["Win","Both Teams to Score","Over 2.5 Goals","Under 2.5 Goals","Draw","Win & BTTS","Win to Nil","Double Chance","Over 1.5 Goals","Clean Sheet"],
+  bet:["Win","Both Teams to Score","Over 2.5 Goals","Under 2.5 Goals","Draw","Win & BTTS","Win to Nil","Double Chance","Over 1.5 Goals","Clean Sheet","Request A Bet"],
   count:["2","3","4","5","6","7","8"],
   stake:["£1","£2","£3","£4","£5"]
 };
@@ -669,11 +718,13 @@ const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).
 const PAL = ["#ff5fa2","#ff9b3d","#ffd23f","#58d68d","#3fc4f0","#9b7bff"];
 
 const store = {
-  get(k){ try{ const v = localStorage.getItem("accaWheels."+k); return v ? JSON.parse(v) : null; }catch(e){ return null; } },
-  set(k,v){ try{ localStorage.setItem("accaWheels."+k, JSON.stringify(v)); }catch(e){} }
+  get(k){ try{ const v = localStorage.getItem((window.WUG && window.WUG.isPrivate ? "accaWheelsP." : "accaWheels.")+k); return v ? JSON.parse(v) : null; }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem((window.WUG && window.WUG.isPrivate ? "accaWheelsP." : "accaWheels.")+k, JSON.stringify(v)); }catch(e){} }
 };
 let lists = Object.assign(JSON.parse(JSON.stringify(DEF)), store.get("lists2") || {});
-let leagues = Object.assign({PL:true,CH:true,L1:true,L2:true}, store.get("leagues") || {});
+let rabAdded = !!store.get("rab");
+if(!rabAdded){ if(!lists.bet.some(isRAB)) lists.bet.push("Request A Bet"); rabAdded = true; store.set("rab", true); store.set("lists2", lists); }
+let leagues = Object.assign({PL:true,CH:true,L1:true,L2:true,NL:true}, store.get("leagues") || {});
 let kos = Object.assign({early:true, three:true, late:true}, store.get("kos") || {});
 let offDays = Array.isArray(store.get("offDays")) ? store.get("offDays") : [];
 let budget = store.get("budget"); if(budget === null || budget === undefined) budget = 5;
@@ -688,6 +739,8 @@ if(!ROUNDS.some(r => r.id === round) || (round !== "all" && ROUNDS.find(r=>r.id=
 function makeRef(){ return "WUG-" + Math.random().toString(36).slice(2,8).toUpperCase(); }
 function saveSlip(){ store.set("slip", slip); if(typeof pushLive === "function") pushLive(); }
 
+/* Hidden house rule: a Win & BTTS slip never goes above 4 teams. The ball still shows every number. */
+function countCap(){ return /win\s*(&|and)\s*(btts|both teams to score)/i.test(slip.bet || "") ? 4 : Infinity; }
 function nextStep(){
   if(!slip.bet) return "bet";
   if(!slip.count) return "count";
@@ -726,13 +779,14 @@ function segments(key){
     const picked = new Set(slip.teams.map(t => t.name));
     slip.teams.forEach(t => { if(t.vs) picked.add(t.vs); });
     const playing = round === "all" ? null : new Set(ROUNDS.find(r=>r.id===round).games.filter(gameAllowed).flatMap(g=>[g.h,g.a]));
-    return TEAMS.filter(t => leagues[t.lg] && !picked.has(t.name) && (!playing || playing.has(t.name)))
+    return TEAMS.filter(t => leagues[t.lg] && (round !== "all" || t.lg !== "NL") && !picked.has(t.name) && (!playing || playing.has(t.name)))
       .map(t => ({label:t.name, lg:t.lg, color:css(LEAGUES[t.lg].c[t.i % 2])}));
   }
   const arr = lists[key];
   return arr.map((label,i) => {
     let c = PAL[i % PAL.length];
     if(i === arr.length - 1 && i > 0 && c === PAL[0]) c = PAL[(i+1) % PAL.length];
+    if(key === "bet" && isRAB(label)) return {label, color:"#b8860b", gold:true};
     return {label, color:c};
   });
 }
@@ -755,7 +809,7 @@ function pent(c, x, y, s, rr){
   c.closePath(); c.fillStyle = "#16181d"; c.fill();
 }
 /* Draws a wheel as a football: white/grey panels, coloured rim per option, black pentagons, sphere shading */
-function drawWheel(c, size, segs, r0, labels){
+function drawWheel(c, size, segs, r0, labels, pop){
   const R = size/2, cx = R, cy = R, r = R - 3;
   const TAU = Math.PI*2;
   c.clearRect(0,0,size,size);
@@ -768,7 +822,7 @@ function drawWheel(c, size, segs, r0, labels){
     for(let i=0;i<n;i++){
       const a = r0 + i*seg - Math.PI/2;
       c.beginPath(); c.moveTo(cx,cy); c.arc(cx,cy,r,a,a+seg); c.closePath();
-      c.fillStyle = i % 2 ? "#e6e9ee" : "#fbfbf8"; c.fill();
+      c.fillStyle = segs[i].gold ? goldFill(c, cx, cy, r) : (i % 2 ? "#e6e9ee" : "#fbfbf8"); c.fill();
       c.beginPath(); c.arc(cx,cy,r,a,a+seg); c.arc(cx,cy,r-rim,a+seg,a,true); c.closePath();
       c.fillStyle = segs[i].color; c.fill();
       if(n>1){ c.beginPath(); c.moveTo(cx,cy); c.lineTo(cx+r*Math.cos(a), cy+r*Math.sin(a)); c.strokeStyle = "rgba(40,44,52,.28)"; c.lineWidth = n>40 ? .6 : 1.2; c.stroke(); }
@@ -814,8 +868,59 @@ function drawWheel(c, size, segs, r0, labels){
   c.fillStyle = g; c.fillRect(0,0,size,size);
   c.restore();
   c.beginPath(); c.arc(cx,cy,r,0,TAU); c.lineWidth = Math.max(1.5, size/160); c.strokeStyle = "rgba(0,0,0,.5)"; c.stroke();
+  if(pop && n && pop.i >= 0 && pop.i < n) drawPop(c, size, segs, r0, pop);
 }
-function draw(){ drawWheel(ctx, cssSize, segments(current), rot, true); }
+function goldFill(c, cx, cy, r){
+  const g = c.createRadialGradient(cx, cy, r*0.1, cx, cy, r);
+  g.addColorStop(0, "#fff1b0"); g.addColorStop(.55, "#ffd23f"); g.addColorStop(1, "#e0a800");
+  return g;
+}
+/* The winning wedge lifts out of the ball towards the pointer. */
+function drawPop(c, size, segs, r0, pop){
+  const R = size/2, cx = R, cy = R, r = R - 3, TAU = Math.PI*2, n = segs.length;
+  const seg = TAU/n, i = pop.i, p = Math.max(0, Math.min(1.2, pop.p));
+  const a = r0 + i*seg - Math.PI/2, mid = a + seg/2;
+  const s = 1 + p * (n > 8 ? 0.16 : 0.09);            /* grows a little */
+  const half = seg/2 + Math.max(0, 0.24 - seg/2) * Math.min(1, p); /* thin wedges widen so the name fits */
+  const pr = r * 0.5;                                  /* pivot along the wedge */
+  const outer = pr + (r - pr) * s, shift = Math.max(0, outer - (r - 1));
+  const dx = Math.cos(mid), dy = Math.sin(mid);
+  const ox = cx + dx * (pr - shift), oy = cy + dy * (pr - shift);
+  c.save();
+  c.translate(ox, oy); c.scale(s, s); c.translate(-dx*pr, -dy*pr);
+  const path = () => { c.beginPath(); c.moveTo(0,0); c.arc(0,0,r,mid-half,mid+half); c.closePath(); };
+  c.shadowColor = "rgba(0,0,0,.55)"; c.shadowBlur = 18*p; c.shadowOffsetY = 6*p;
+  path(); c.fillStyle = segs[i].gold ? goldFill(c, 0, 0, r) : "#ffffff"; c.fill();
+  c.shadowColor = "transparent";
+  const rim = Math.max(3, r*0.075);
+  c.beginPath(); c.arc(0,0,r,mid-half,mid+half); c.arc(0,0,r-rim,mid+half,mid-half,true); c.closePath();
+  c.fillStyle = segs[i].color; c.fill();
+  path(); c.lineJoin = "round"; c.lineWidth = 3/s; c.strokeStyle = segs[i].gold ? "#7a5600" : "#ffcf3a"; c.stroke();
+  const fs = Math.min(19, Math.max(11, half * 2 * r * 0.72 * 0.6));
+  c.rotate(mid); c.fillStyle = "#11141c"; c.textAlign = "right"; c.textBaseline = "middle";
+  c.font = `800 ${fs}px Barlow, sans-serif`;
+  c.fillText(segs[i].label, r - rim - 6, 0.5, r*0.62);
+  c.restore();
+}
+let popState = null, popRaf = 0;
+function startPop(segs, i){
+  popState = {segs: segs, i: i, t0: performance.now()};
+  cancelAnimationFrame(popRaf);
+  const step = now => {
+    if(!popState) return;
+    draw();
+    if(now - popState.t0 < 520) popRaf = requestAnimationFrame(step);
+  };
+  popRaf = requestAnimationFrame(step);
+}
+function clearPop(){ popState = null; cancelAnimationFrame(popRaf); }
+function popAmount(){
+  if(!popState) return 0;
+  const x = Math.min(1, (performance.now() - popState.t0) / 450);
+  const c1 = 1.70158, c3 = c1 + 1;                    /* ease-out-back: overshoots then settles */
+  return reduce ? 1 : 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+}
+function draw(){ if(popState) drawWheel(ctx, cssSize, popState.segs, rot, true, {i: popState.i, p: popAmount()}); else drawWheel(ctx, cssSize, segments(current), rot, true); }
 function idxAt(r, n){
   const seg = Math.PI*2/n;
   const a = (((-r) % (Math.PI*2)) + Math.PI*2) % (Math.PI*2);
@@ -844,11 +949,14 @@ function spin(fast){
     const n = segs.length;
     if(spinning){ resolve(null); return; }
     if(!n){ toast(current === "teams" ? "No teams left with these filters. Turn a filter back on or try fewer teams" : current === "stake" && budget ? "This week's " + gbpFmt(budget) + " is all staked. A new week starts Monday" : "Add some options to this wheel first"); resolve(null); return; }
+    if(current === "count" && isRAB(slip.bet)){ toast("Void for Request A Bet: it's always 1 team"); resolve(null); return; }
     if(current === "teams" && !slip.count){ toast("Spin the number of teams first"); resolve(null); return; }
     if(current === "teams" && slip.teams.length >= +slip.count){ toast("All " + slip.count + " teams picked. Spin the count again to change it"); resolve(null); return; }
+    clearPop();
     spinning = true; setBusy(true);
     const seg = Math.PI*2/n;
-    const t = Math.floor(Math.random()*n);
+    let t = Math.floor(Math.random()*n);
+    if(current === "count"){ const cap = countCap(); const ok = segs.map((x,i) => i).filter(i => +segs[i].label <= cap); if(ok.length && ok.length < n) t = ok[Math.floor(Math.random()*ok.length)]; }
     const jitter = (Math.random()-0.5)*0.7;
     const base = -(t + 0.5 + jitter)*seg;
     const TAU = Math.PI*2;
@@ -870,6 +978,7 @@ function spin(fast){
       else {
         rot = end % TAU; spinning = false; setBusy(false);
         const won = segs[idxAt(rot,n)];
+        startPop(segs, idxAt(rot,n));
         land(won);
         resolve(won);
       }
@@ -879,7 +988,12 @@ function spin(fast){
 }
 function land(s){
   const k = current;
-  if(k === "bet") slip.bet = s.label;
+  if(k === "bet"){
+    const wasRAB = isRAB(slip.bet); slip.bet = s.label;
+    if(isRAB(slip.bet)){ slip.count = "1"; slip.teams = slip.teams.slice(0, 1); }
+    else if(wasRAB){ slip.count = ""; slip.teams = []; }
+    else if(slip.count && +slip.count > countCap()){ slip.count = ""; slip.teams = slip.teams.slice(0, countCap()); }
+  }
   else if(k === "count"){
     slip.count = s.label;
     if(slip.teams.length > +slip.count) slip.teams = slip.teams.slice(0, +slip.count);
@@ -891,7 +1005,7 @@ function land(s){
   const nx = nextStep();
   renderSlip(); renderRows();
   if(nx !== "done" && nx !== current){
-    setTimeout(() => { if(!spinning && !autoRunning){ select(nx, true); } }, 900);
+    setTimeout(() => { if(!spinning && !autoRunning){ select(nx, true); } }, 1700);
   } else { updateSpinBtn(); }
 }
 
@@ -904,7 +1018,7 @@ async function spinAll(){
     select(nextStep(), true);
     const r = await spin(true);
     if(!r) break;
-    await new Promise(r => setTimeout(r, reduce ? 150 : 550));
+    await new Promise(r => setTimeout(r, reduce ? 150 : 1300));
   }
   autoRunning = false;
   updateSpinBtn();
@@ -927,6 +1041,7 @@ function updateSpinBtn(){
 }
 
 function select(key, quiet){
+  clearPop();
   current = key; rot = 0;
   const w = WHEELS.find(w=>w.key===key);
   $("stageTitle").textContent = w.name;
@@ -940,7 +1055,7 @@ function select(key, quiet){
 
 function rowValue(key){
   if(key === "bet") return slip.bet;
-  if(key === "count") return slip.count ? slip.count + " teams" : null;
+  if(key === "count") return isRAB(slip.bet) ? "Void · 1 team" : (slip.count ? slip.count + " teams" : null);
   if(key === "teams") return slip.teams.length ? slip.teams.map(t=>t.name).join(", ") : null;
   if(key === "stake") return slip.stake;
 }
@@ -1039,7 +1154,7 @@ function renderSlip(){
   const legs = slip.teams.map((t,i) => `
     <li class="leg">
       <span class="leg-n">${i+1}.</span>
-      <span class="leg-name">${esc(t.name)}<span class="leg-lg">${lg(t.lg)}</span>${t.vs ? `<span class="leg-fx">v ${esc(t.vs)} (${t.ha}) · ${esc(t.day)} ${esc(t.ko)}</span>` : ""}</span>
+      <span class="leg-name">${esc(t.name)}<span class="leg-lg">${lg(t.lg)}</span>${t.vs ? `<span class="leg-fx">v ${esc(t.vs)} (${t.ha}) · ${esc(t.day)} ${esc(t.ko)}</span>` : ""}${isRAB(slip.bet) ? rabHtml(t) : ""}</span>
       ${legCell(t, slip.bet, i)}
     </li>`).join("");
   const pending = slip.count ? Math.max(0, +slip.count - slip.teams.length) : 0;
@@ -1057,7 +1172,7 @@ function renderSlip(){
     <div class="slip-meta"><span>${date}</span><span>Ref ${slip.ref}</span></div>
     <hr class="rule">
     <div class="kv"><span>Bet</span><b>${esc(slip.bet || "—")}</b></div>
-    <div class="kv"><span>Type</span><b>${n ? (foldNames[n] || n+"-Fold") + " Acca" : "—"}</b></div>
+    <div class="kv"><span>Type</span><b>${isRAB(slip.bet) ? "Request A Bet (single)" : n ? (foldNames[n] || n+"-Fold") + " Acca" : "—"}</b></div>
     <hr class="rule">
     <div class="kv"><span>Selections</span><b>${slip.teams.length}${n?" / "+n:""}</b></div>
     ${legs || placeholders ? `<ul class="legs">${legs}${placeholders}</ul>` : `<p class="slip-empty">Teams appear here as you spin them.</p>`}
@@ -1113,8 +1228,8 @@ $("slip").addEventListener("click", e => {
 
 function slipText(){
   const n = +slip.count;
-  const lines = [`The Wheely Unlucky Gambler (${slip.ref})`, `Bet: ${slip.bet}`, `${n} teams:`];
-  slip.teams.forEach((t,i) => lines.push(`${i+1}. ${t.name}${t.vs ? ` v ${t.vs} (${t.ha}, ${t.day} ${t.ko})` : ` (${LEAGUES[t.lg]?LEAGUES[t.lg].short:""})`} – ${slip.bet}`));
+  const lines = [`The Wheely Unlucky Gambler (${slip.ref})`, `Bet: ${slip.bet}`, isRAB(slip.bet) ? "1 team:" : `${n} teams:`];
+  slip.teams.forEach((t,i) => lines.push(`${i+1}. ${t.name}${t.vs ? ` v ${t.vs} (${t.ha}, ${t.day} ${t.ko})` : ` (${LEAGUES[t.lg]?LEAGUES[t.lg].short:""})`} – ${isRAB(slip.bet) ? rabText(t) : slip.bet}`));
   lines.push(`Stake: ${slip.stake}`);
   if(slip.odds){ const r = potentialReturn(slip.stake, slip.odds); lines.push(`Odds: ${slip.odds}${r ? ` (to return ${gbpFmt(r)})` : ""}`); }
   lines.push(location.origin.startsWith("http") ? location.origin : "wheely-unlucky-gambler.netlify.app");
@@ -1137,7 +1252,7 @@ function renderFixtures(){
   if(!r.games.length){ $("fxList").innerHTML = `<p class="fx-empty">The teams wheel uses every club in the four leagues, with no fixtures attached.</p>`; return; }
   const onSlip = new Set(slip.teams.map(t => t.name));
   let html = "", lastKey = "";
-  ["PL","CH","L1","L2"].forEach(lg => {
+  ["NL","PL","CH","L1","L2"].forEach(lg => {
     r.games.filter(g => g.lg === lg).forEach(g => {
       const key = lg + g.day;
       if(key !== lastKey){ html += `<div class="fx-day"><i style="background:var(${LEAGUES[lg].c[0]})"></i>${LEAGUES[lg].name} · ${esc(g.day)}</div>`; lastKey = key; }
@@ -1226,7 +1341,7 @@ var results = (() => {
         const pr = potentialReturn(x.stake, x.odds), pe = paidEff(x), vc = votes ? votes.countsFor(x.ref) : {total:0};
         html += `<article class="rs ${st}">
           <div class="rs-top"><span class="pill ${st}">${st === "won" ? "Won" : st === "lost" ? "Lost" : "Pending"}</span><b>${esc(x.bet||"")}</b><span class="rs-stake">${esc(x.stake||"")}${x.odds ? ` <small>@ ${esc(x.odds)}</small>` : ""}</span><button class="rs-share" data-share="${esc(x.id)}" aria-label="Share this slip as an image" title="Share as image">⇪</button><button class="rs-x admin-only" data-del="${esc(x.id)}" aria-label="Remove this slip" title="Remove this slip">×</button></div>
-          <ol class="rs-legs">${legs(x).map((l,i) => `<li>${legCell(l, x.bet, i, x.id)}<span>${esc(l.name)}${l.vs ? ` <em>v ${esc(l.vs)} (${esc(l.ha||"")})</em>` : ""}</span></li>`).join("")}</ol>
+          <ol class="rs-legs">${legs(x).map((l,i) => `<li>${legCell(l, x.bet, i, x.id)}<span>${esc(l.name)}${l.vs ? ` <em>v ${esc(l.vs)} (${esc(l.ha||"")})</em>` : ""}${isRAB(x.bet) ? rabHtml(l) : ""}</span></li>`).join("")}</ol>
           <div class="rs-money">
             ${isAdmin ? `<label class="ret">Odds <input class="odds-in" id="odds_${esc(x.id)}" data-odds="${esc(x.id)}" value="${esc(x.odds||"")}" placeholder="e.g. 22/1" autocomplete="off"></label>` : ""}
             <span class="ret">${st === "pending" ? "To return" : "Returned"} <b>${st === "pending" ? (pr ? gbp(pr) : "—") : (pe !== null ? gbp(pe) : "—")}</b></span>
@@ -1368,7 +1483,7 @@ var results = (() => {
     const rows = [["Saved","Ref","Week","Bet","Selections","Stake","Odds","Result","Paid out","Profit/loss"]];
     items.slice().sort((a,b) => (a.savedAt||"").localeCompare(b.savedAt||"")).forEach(x => {
       const st = status(x), pe = paidEff(x), stake = money(x.stake);
-      const sel = legs(x).map(l => { const s = legSt(l, x.bet), sc = legScore(l); return `${l.name}${l.vs ? " v " + l.vs + " (" + (l.ha||"") + ")" : ""}${sc ? " " + sc.txt : ""} ${s===1?"W":s===2?"L":"-"}`; }).join("; ");
+      const sel = legs(x).map(l => { const s = legSt(l, x.bet), sc = legScore(l); return `${l.name}${l.vs ? " v " + l.vs + " (" + (l.ha||"") + ")" : ""}${sc ? " " + sc.txt : ""}${isRAB(x.bet) ? " [" + rabText(l) + "]" : ""} ${s===1?"W":s===2?"L":"-"}`; }).join("; ");
       rows.push([(x.savedAt||"").slice(0,10), x.ref||"", x.roundLabel||"", x.bet||"", sel, stake.toFixed(2), x.odds||"", st, pe === null ? "" : pe.toFixed(2), st === "pending" ? "" : ((pe||0) - stake).toFixed(2)]);
     });
     return rows.map(r => r.map(v => /[",\n;]/.test(String(v)) ? '"' + String(v).replace(/"/g,'""') + '"' : String(v)).join(",")).join("\r\n");
@@ -1455,7 +1570,7 @@ function openEditor(key){
   const body = $("sheetBody");
   if(key === "teams"){
     body.innerHTML = `<p class="note" style="margin:0 0 10px">Choose which leagues go on the wheel.</p>` +
-      Object.keys(LEAGUES).map(k => `<label class="lg-toggle"><input type="checkbox" id="lg_${k}" ${leagues[k]?"checked":""}><span><b>${LEAGUES[k].name}</b> <span class="note">${TEAMS_RAW[k].length} clubs</span></span></label>`).join("");
+      Object.keys(LEAGUES).map(k => `<label class="lg-toggle"><input type="checkbox" id="lg_${k}" ${leagues[k]?"checked":""}><span><b>${LEAGUES[k].name}</b> <span class="note">${TEAMS_RAW[k].length} ${k === "NL" ? "nations" : "clubs"}</span></span></label>`).join("");
     body.style.display = "flex"; body.style.flexDirection = "column"; body.style.gap = "8px";
   } else {
     body.removeAttribute("style");
@@ -1537,6 +1652,7 @@ function votingOpen(){
   return !k || Date.now() < k.getTime();
 }
 function predictBox(){
+  if(window.WUG && window.WUG.isPrivate) return "";
   if(!votes || nextStep() !== "done" || !slip.ref) return "";
   const c = votes.countsFor(slip.ref), open = votingOpen();
   const nick = store.get("nick") || "";
@@ -1670,11 +1786,12 @@ async function shareSlipImage(x){
 /* ---------- live spins: viewers watch the ball spin as the admin spins ---------- */
 var spinDoc = null, lastSpinSeq = 0, viewerAnim = false, pendingLive = null;
 function pushSpin(d){
-  if(!isAdmin || !spinDoc) return;
+  if(!isAdmin || !spinDoc || (window.WUG && window.WUG.isPrivate)) return;
   spinDoc.set(Object.assign({}, d, {seq: Date.now(), at: Date.now()})).catch(() => {});
 }
 function stageFor(key){
   const w = WHEELS.find(w => w.key === key); if(!w) return;
+  if(key !== current) clearPop();
   current = key; $("stageTitle").textContent = w.name; $("stageHint").textContent = w.hint; renderRows();
 }
 function playSpin(d){
@@ -1687,9 +1804,9 @@ function playSpin(d){
   const labels = d.labels || [], lgs = d.lgs || [];
   let segs;
   if(d.key === "teams") segs = labels.map((label, i) => { const t = TEAMS.find(t => t.name === label); const lg = lgs[i] || (t && t.lg) || "PL"; return {label, lg, color: css(LEAGUES[lg] ? LEAGUES[lg].c[(t ? t.i : i) % 2] : "--pl")}; });
-  else { const base = segments(d.key); segs = labels.map((label, i) => ({label, color: base[i] && base[i].label === label ? base[i].color : PAL[i % PAL.length]})); }
+  else { const base = segments(d.key); segs = labels.map((label, i) => (base[i] && base[i].label === label ? base[i] : (d.key === "bet" && isRAB(label) ? {label, color:"#b8860b", gold:true} : {label, color: PAL[i % PAL.length]}))); }
   const n = segs.length; if(!n) return;
-  viewerAnim = true; stageFor(d.key);
+  viewerAnim = true; stageFor(d.key); clearPop();
   const dur = Math.max(300, d.dur || 2000), t0 = performance.now() - Math.min(elapsed, dur - 200);
   const ease = x => 1 - Math.pow(1 - x, 4); let lastIdx = -1;
   function frame(now){
@@ -1706,9 +1823,9 @@ function playSpin(d){
   function finish(){
     if(finished) return; finished = true;
     viewerAnim = false; rot = d.end % (Math.PI * 2);
-    drawWheel(ctx, cssSize, segs, rot, true);
+    startPop(segs, idxAt(rot, n));
     setReadout(segs[idxAt(rot, n)].label, "Landed on");
-    if(pendingLive){ const pl = pendingLive; pendingLive = null; setTimeout(() => { if(!viewerAnim) applyLive(pl, true); else pendingLive = pl; }, document.hidden ? 0 : 1200); }
+    if(pendingLive){ const pl = pendingLive; pendingLive = null; setTimeout(() => { if(!viewerAnim) applyLive(pl, true); else pendingLive = pl; }, document.hidden ? 0 : 1700); }
   }
   setTimeout(finish, Math.max(0, dur - Math.min(elapsed, dur - 200)) + 600);
   requestAnimationFrame(frame);
@@ -1723,11 +1840,39 @@ function applyRole(){
   if(!isAdmin && editing) closeEditor();
   if(!isAdmin) $("helpBg").hidden = true;
 
-  if(!resultsStarted){ resultsStarted = true; results.start(); } else results.render();
+  const W0 = window.WUG || {};
+  if(!resultsStarted && (!W0.isPrivate || privOK)){ resultsStarted = true; results.start(); } else if(resultsStarted) results.render();
+  if(W0.isPrivate){ $("roleBtn").textContent = "Lock"; }
   if(!isAdmin) setReadout(slip.teams.length ? slip.teams[slip.teams.length-1].name : "Watching", "View only");
   renderSlip(); updateSpinBtn();
 }
+var privOK = false;
+async function leavePrivate(){
+  try{ if(window.WUG.auth && privOK) await window.WUG.auth.signOut(); }catch(e){}
+  try{ localStorage.removeItem("wug.mode"); }catch(e){}
+  location.reload();
+}
+$("privExit").onclick = leavePrivate;
+$("privLeave2").onclick = leavePrivate;
+$("tcBtn").onclick = () => { $("tcBg").hidden = false; $("tcPw").value = ""; $("tcErr").hidden = true; $("tcPw").focus(); };
+$("tcCancel").onclick = () => { $("tcBg").hidden = true; };
+$("tcBg").addEventListener("click", e => { if(e.target.id === "tcBg") $("tcBg").hidden = true; });
+async function privateSignIn(pw){
+  const W = window.WUG || {}; if(!W.auth) throw new Error("offline");
+  await W.auth.signInWithEmailAndPassword(W.privateEmail, pw);
+}
+$("tcForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  try{ await privateSignIn($("tcPw").value); try{ localStorage.setItem("wug.mode", "private"); }catch(x){} location.reload(); }
+  catch(x){ $("tcErr").textContent = x && x.code === "auth/network-request-failed" ? "No connection. Try again." : "That password isn't right."; $("tcErr").hidden = false; $("tcPw").select(); }
+});
+$("privGateForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  try{ await privateSignIn($("privPw2").value); }
+  catch(x){ $("privErr2").hidden = false; $("privPw2").select(); }
+});
 $("roleBtn").onclick = async () => {
+  if(window.WUG && window.WUG.isPrivate){ leavePrivate(); return; }
   if(isAdmin){
     try{ if(window.WUG.auth) await window.WUG.auth.signOut(); }catch(e){}
     isAdmin = false; applyRole(); toast("Logged out. View only"); return;
@@ -1750,7 +1895,7 @@ $("loginForm").addEventListener("submit", async e => {
 
 /* shared state: admin writes the wheel settings and the live slip, everyone else follows */
 var cfgDoc = null, liveDoc = null, lastCfg = "", lastLive = "", liveT = null;
-function cfgPayload(){ return {lists: JSON.parse(JSON.stringify(lists)), leagues: Object.assign({}, leagues), round, kos: Object.assign({}, kos), offDays: offDays.slice(), budget}; }
+function cfgPayload(){ return {lists: JSON.parse(JSON.stringify(lists)), leagues: Object.assign({}, leagues), round, kos: Object.assign({}, kos), offDays: offDays.slice(), budget, rab: true}; }
 async function pushConfig(){
   if(!isAdmin || !cfgDoc) return;
   const body = cfgPayload(); const key = JSON.stringify(body);
@@ -1768,14 +1913,17 @@ function pushLive(){
 }
 function applyConfig(d){
   if(!d) return;
-  lastCfg = JSON.stringify({lists:d.lists, leagues:d.leagues, round:d.round, kos:d.kos, offDays:d.offDays, budget:d.budget});
+  lastCfg = JSON.stringify({lists:d.lists, leagues:d.leagues, round:d.round, kos:d.kos, offDays:d.offDays, budget:d.budget, rab:d.rab});
   if(d.kos) kos = Object.assign({early:true, three:true, late:true}, d.kos);
   if(Array.isArray(d.offDays)) offDays = d.offDays.slice();
   if(typeof d.budget === "number") budget = d.budget;
   if(d.lists) lists = Object.assign(JSON.parse(JSON.stringify(DEF)), d.lists);
-  if(d.leagues) leagues = Object.assign({PL:true,CH:true,L1:true,L2:true}, d.leagues);
+  let needPush = false;
+  if(!d.rab){ if(!lists.bet.some(isRAB)) lists.bet.push("Request A Bet"); needPush = true; }
+  if(d.leagues) leagues = Object.assign({PL:true,CH:true,L1:true,L2:true,NL:true}, d.leagues);
   if(d.round && ROUNDS.some(r => r.id === d.round)) round = d.round;
   renderChips(); renderSlip(); renderRows(); if(!spinning){ rot = 0; draw(); }
+  if(needPush && isAdmin) pushConfig();
 }
 var lastLiveAt = "";
 function applyLive(d, afterSpin){
@@ -1796,8 +1944,27 @@ function applyLive(d, afterSpin){
 }
 
 (function initRole(){
-  applyRole();
   const W = window.WUG || {};
+  if(W.isPrivate){
+    document.body.classList.add("private-mode");
+    $("privBanner").hidden = false; $("privGate").hidden = false;
+    applyRole();
+    if(!W.auth || !W.db){ $("privErr2").textContent = "Can't connect right now. Check your signal."; $("privErr2").hidden = false; return; }
+    W.auth.onAuthStateChanged(u => {
+      const ok = !!u && (u.email || "").toLowerCase() === String(W.privateEmail).toLowerCase();
+      if(ok && !privOK){
+        privOK = true; isAdmin = true; $("privGate").hidden = true;
+        try{
+          cfgDoc = W.db.doc("config/main"); liveDoc = W.db.doc("config/live");
+          cfgDoc.onSnapshot(snap => { if(snap.exists) applyConfig(snap.data()); else pushConfig(); }, () => {});
+          liveDoc.onSnapshot(snap => { if(snap.exists) applyLive(snap.data()); else { liveSeen = true; pushLive(); } }, () => {});
+        }catch(e){}
+        applyRole();
+      } else if(!ok){ privOK = false; isAdmin = false; $("privGate").hidden = false; setTimeout(() => $("privPw2").focus(), 50); applyRole(); }
+    });
+    return;
+  }
+  applyRole();
   if(W.auth){
     W.auth.onAuthStateChanged(u => {
       isAdmin = !!u && (u.email || "").toLowerCase() === String(W.adminEmail).toLowerCase();
