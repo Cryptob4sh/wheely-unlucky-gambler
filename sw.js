@@ -1,4 +1,4 @@
-/* The Wheely Unlucky Gambler: lets the app install to a home screen. Always fetches fresh from the network; falls back to the last copy of the page when offline. */
+/* The Wheely Unlucky Footy Acca: lets the app install to a home screen. Always fetches fresh from the network; falls back to the last copy of the page when offline. */
 const CACHE = "wug-v1";
 self.addEventListener("install", e => { self.skipWaiting(); });
 self.addEventListener("activate", e => { e.waitUntil(self.clients.claim()); });
