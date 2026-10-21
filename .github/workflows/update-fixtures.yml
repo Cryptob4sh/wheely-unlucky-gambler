@@ -1,0 +1,39 @@
+name: Update fixtures and scores
+
+# Refreshes fixtures.json from Sky Sports so the site always has the next
+# rounds and the latest scores. Runs on GitHub for free; nothing to do by hand.
+on:
+  schedule:
+    - cron: "20 5 * * *"     # every morning (06:20 UK in summer, 05:20 in winter)
+    - cron: "15 17 * * 6"    # Saturday tea-time, after the 3pm games
+    - cron: "45 22 * * *"    # every night, after the evening games
+  workflow_dispatch: {}      # "Run workflow" button for an update on demand
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-fixtures
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch fixtures and scores
+        run: python3 scripts/update_fixtures.py
+
+      - name: Save changes
+        run: |
+          if git diff --quiet -- fixtures.json; then
+            echo "Nothing new."
+            exit 0
+          fi
+          git config user.name "fixtures-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fixtures.json
+          git commit -m "Update fixtures and scores"
+          git push
